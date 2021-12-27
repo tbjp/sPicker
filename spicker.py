@@ -53,6 +53,7 @@ class StudentPicker(QMainWindow):
         self.picked_student_label = QLabel("00")
         self.picked_student_label.setFont(result_font)
         self.btn_pick_clicked_restart_flag = 0
+        self.last_picked_num = 0
 
         # Top left box - result and user settings
         topLeftLayout = QVBoxLayout()
@@ -71,15 +72,33 @@ class StudentPicker(QMainWindow):
         topLeftLayout.addWidget(topLeftGroupBox1)
         topLeftLayout.addWidget(guideText)
         topLeftLayout.setContentsMargins(10, 10, 10, 10)
-        self.spinBox = QSpinBox()
-        self.spinBox.setValue(def_ss)
-        self.spinBox.setMinimum(1)
-        self.spinBox.setMaximum(max_ss)
-        spinBoxBox = QHBoxLayout()
-        spinBoxBox.addWidget(self.spinBox)
-        spinBoxBox.addWidget(self.btn_new_list)
-        spinBoxBox.setContentsMargins(50, 10, 50, 10)
-        topLeftLayout.addLayout(spinBoxBox)
+
+        # Create a spinbox for a new list.
+        self.create_list_spinbox = QSpinBox(maximumWidth=100)
+        self.create_list_spinbox.setValue(def_ss)
+        self.create_list_spinbox.setMinimum(1)
+        self.create_list_spinbox.setMaximum(max_ss)
+
+        # Create a spinbox for adding or removing students.
+        self.add_remove_spinbox = QSpinBox(maximumWidth=100)
+        self.add_remove_spinbox.setValue(1)
+        self.add_remove_spinbox.setMinimum(1)
+        self.add_remove_spinbox.setMaximum(max_ss)
+
+        # Create a layout for the create list spinbox and button.
+        create_list_layout = QHBoxLayout()
+        create_list_layout.addWidget(self.create_list_spinbox)
+        create_list_layout.addWidget(self.btn_new_list)
+        create_list_layout.setContentsMargins(50, 10, 50, 10)
+        topLeftLayout.addLayout(create_list_layout)
+
+        # Create a layout for add/remove ss.
+        add_remove_layout = QHBoxLayout()
+        add_remove_layout.addWidget(self.add_remove_spinbox)
+        add_remove_layout.addWidget(self.btn_add_student)
+        add_remove_layout.addWidget(self.btn_remove_student)
+        add_remove_layout.setContentsMargins(10, 10, 10, 10)
+        topLeftLayout.addLayout(add_remove_layout)
 
         # Top right box - lists and results
         topRightLayout = QVBoxLayout()
@@ -106,6 +125,7 @@ class StudentPicker(QMainWindow):
         # Bottom box - big button
         bottomLayout = QHBoxLayout()
         bottomLayout.addWidget(self.btn_pick)
+        bottomLayout.addWidget(self.btn_restart)
 
         # Main Layout
         mainLayout = QGridLayout()
@@ -126,8 +146,38 @@ class StudentPicker(QMainWindow):
         self.btn_pick = QPushButton("Pick a Student", maximumWidth=1000)
         self.btn_pick.clicked.connect(self.btn_pick_clicked)
 
+        self.btn_restart = QPushButton("Restart", maximumWidth=100)
+        self.btn_restart.clicked.connect(self.btn_restart_clicked)
+
         self.btn_new_list = QPushButton("Create", maximumWidth=100)
         self.btn_new_list.clicked.connect(self.btn_new_list_clicked)
+
+        self.btn_add_student = QPushButton("Add", maximumWidth=100)
+        self.btn_add_student.clicked.connect(self.btn_add_student_clicked)
+
+        self.btn_remove_student = QPushButton("Remove", maximumWidth=100)
+        self.btn_remove_student.clicked.connect(self.btn_remove_student_clicked)
+
+    def btn_add_student_clicked(self):
+        """Add the student to the current list and update all lists."""
+        x = self.add_remove_spinbox.value()
+        if x not in self.ss_num_list:
+            self.ss_num_list.append(x)
+            self.ss_unpicked_list.append(x)
+        self.ss_unpicked_list.sort()
+        self.update_labels(self.last_picked_num)
+
+    def btn_remove_student_clicked(self):
+        """Remove the student to the current list and update all lists."""
+        x = self.add_remove_spinbox.value()
+        if x in self.ss_num_list:
+            self.ss_num_list.remove(x)
+        if x in self.ss_unpicked_list:
+            self.ss_unpicked_list.remove(x)
+        if x in self.ss_picked_list:
+            self.ss_picked_list.remove(x)
+        self.ss_unpicked_list.sort()
+        self.update_labels(self.last_picked_num)
 
     def btn_pick_clicked(self):
         """Pick a student from the list, show result (and remove)."""
@@ -143,6 +193,7 @@ class StudentPicker(QMainWindow):
             self.ss_unpicked_list.remove(randomValue)
             self.ss_picked_list.append(randomValue)
             self.update_labels(randomValue)
+            self.last_picked_num = randomValue
             print(f"RF: {rf}")
 
         if not x and rf == 0:
@@ -151,26 +202,34 @@ class StudentPicker(QMainWindow):
 
         if rf == 1:  # No students in list.
             self.ss_unpicked_list_label.setText("All students picked.")
-            self.btn_pick.setText("Restart")
-            rf = 2
-        elif rf == 2:  # Restart button pressed.
-            self.btn_new_list_clicked()
-            self.btn_pick.setText("Pick a Student")
-            rf = 0
-            print(f"RF: {rf}")
+            self.btn_pick.setDisabled(1)
 
         self.btn_pick_clicked_restart_flag = rf  # Update global var
 
     def btn_new_list_clicked(self):
         """Create a new list based on the sping box. Reset results."""
-        x = self.spinBox.value()
+        x = self.create_list_spinbox.value()
         self.ss_num_list = list(range(1, x + 1))
-        self.ss_unpicked_list = self.ss_num_list
+        self.ss_unpicked_list = self.ss_num_list.copy()
         self.ss_picked_list = []
         self.update_labels()
 
+    def btn_restart_clicked(self):
+        """Restart the lists based on current list."""
+        self.ss_unpicked_list = self.ss_num_list.copy()
+        self.ss_unpicked_list.sort()
+        self.ss_picked_list.clear()
+        self.update_labels()
+
+    def btn_pick_enable_check(self):
+        """Check if the pick button should be enabled or disabled."""
+        if self.ss_unpicked_list:
+            self.btn_pick.setEnabled(1)
+        else:
+            self.btn_pick.setDisabled(1)
+
     def update_labels(self, current_num=0):
-        """Update labels based on current lists."""
+        """Update labels and buttons based on current lists."""
         if self.ss_picked_list:
             pl = self.list_to_string(self.ss_picked_list)
             self.ss_picked_list_label.setText(pl)
@@ -187,6 +246,8 @@ class StudentPicker(QMainWindow):
             self.picked_student_label.setText("--")
         else:
             self.picked_student_label.setText(str(current_num))
+
+        self.btn_pick_enable_check()
 
     def list_to_string(self, this_list):
         string = " ".join(list(map(str, this_list)))
