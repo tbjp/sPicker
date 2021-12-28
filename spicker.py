@@ -35,8 +35,6 @@ class StudentPicker(QMainWindow):
         self.setMinimumSize(QSize(400, 500))
         self.move(300, 300)
 
-        self.create_buttons()
-
         # Settings
         def_ss = 3  # Default num of students
         max_ss = 50  # Max num of students
@@ -45,7 +43,7 @@ class StudentPicker(QMainWindow):
         result_font = QFont()
         result_font.setPointSize(50)
 
-        # Create default variables.
+        # Initialize variables.
         self.ss_num_list = list(range(1, def_ss))
         self.ss_picked_list = []
         self.resultsString = ""
@@ -55,7 +53,28 @@ class StudentPicker(QMainWindow):
         self.btn_pick_clicked_restart_flag = 0
         self.last_picked_num = 0
 
-        # Top left box - result and user settings
+        # Create buttons before layouts.
+        self.create_buttons()
+
+        topLeftLayout = self.createTopLeftLayout(def_ss, max_ss)
+        topRightLayout = self.createTopRightLayout()
+        bottomLayout = self.createBottomLayout()
+
+        # Main Layout
+        mainLayout = QGridLayout()
+        mainLayout.addLayout(topLeftLayout, 0, 0)
+        mainLayout.addLayout(topRightLayout, 0, 1)
+        mainLayout.addLayout(bottomLayout, 1, 0)
+
+        widget = QWidget()
+        widget.setLayout(mainLayout)
+
+        # Set the central widget of the window.
+        self.setCentralWidget(widget)
+
+        self.show()
+
+    def createTopLeftLayout(self, def_ss, max_ss):
         topLeftLayout = QVBoxLayout()
         topLeftGroupBox1 = QGroupBox("Chosen Student")
         topLeftGroupBox1Layout = QVBoxLayout()
@@ -100,6 +119,9 @@ class StudentPicker(QMainWindow):
         add_remove_layout.setContentsMargins(10, 10, 10, 10)
         topLeftLayout.addLayout(add_remove_layout)
 
+        return topLeftLayout
+
+    def createTopRightLayout(self):
         # Top right box - lists and results
         topRightLayout = QVBoxLayout()
 
@@ -112,6 +134,7 @@ class StudentPicker(QMainWindow):
         topRightGroupBox1Layout.addWidget(self.ss_unpicked_list_label)
         topRightLayout.addWidget(topRightGroupBox1)
 
+        # --- Picked students group box
         topRightGroupBox2 = QGroupBox("Picked Students")
         topRightGroupBox2Layout = QVBoxLayout()
         topRightGroupBox2Layout.addWidget(self.ss_picked_list_label)
@@ -122,25 +145,16 @@ class StudentPicker(QMainWindow):
         self.ss_unpicked_list_label.setMaximumWidth(200)
         self.ss_picked_list_label.setMaximumWidth(200)
 
+        return topRightLayout
+   
+    def createBottomLayout(self):
         # Bottom box - big button
         bottomLayout = QHBoxLayout()
         bottomLayout.addWidget(self.btn_pick)
         bottomLayout.addWidget(self.btn_restart)
 
-        # Main Layout
-        mainLayout = QGridLayout()
-        mainLayout.addLayout(topLeftLayout, 0, 0)
-        mainLayout.addLayout(topRightLayout, 0, 1)
-        mainLayout.addLayout(bottomLayout, 1, 0)
-
-        widget = QWidget()
-        widget.setLayout(mainLayout)
-
-        # Set the central widget of the window.
-        self.setCentralWidget(widget)
-
-        self.show()
-
+        return bottomLayout
+    
     def create_buttons(self):
         """Create buttons for the main window."""
         self.btn_pick = QPushButton("Pick a Student", maximumWidth=1000)
@@ -212,14 +226,14 @@ class StudentPicker(QMainWindow):
         self.ss_num_list = list(range(1, x + 1))
         self.ss_unpicked_list = self.ss_num_list.copy()
         self.ss_picked_list = []
-        self.update_labels()
+        self.update_labels(0)
 
     def btn_restart_clicked(self):
         """Restart the lists based on current list."""
         self.ss_unpicked_list = self.ss_num_list.copy()
         self.ss_unpicked_list.sort()
         self.ss_picked_list.clear()
-        self.update_labels()
+        self.update_labels(0)
 
     def btn_pick_enable_check(self):
         """Check if the pick button should be enabled or disabled."""
@@ -227,6 +241,11 @@ class StudentPicker(QMainWindow):
             self.btn_pick.setEnabled(1)
         else:
             self.btn_pick.setDisabled(1)
+
+        if self.ss_picked_list:
+            self.btn_restart.setEnabled(1)
+        else:
+            self.btn_restart.setDisabled(1)
 
     def update_labels(self, current_num=0):
         """Update labels and buttons based on current lists."""
@@ -252,16 +271,6 @@ class StudentPicker(QMainWindow):
     def list_to_string(self, this_list):
         string = " ".join(list(map(str, this_list)))
         return string
-
-
-class ColorBlock(QWidget):
-    def __init__(self, color):
-        super(ColorBlock, self).__init__()
-        self.setAutoFillBackground(True)
-
-        palette = self.palette()
-        palette.setColor(QPalette.ColorRole.Window, QColor(color))
-        self.setPalette(palette)
 
 
 def main():
