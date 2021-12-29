@@ -35,7 +35,7 @@ class Numbers(QWidget):
         self.ss_num_list = list(range(1, def_ss))
         self.ss_picked_list = []
         self.resultsString = ""
-        self.ss_unpicked_list_label = QLabel("PH", wordWrap=100)
+        self.ss_unpicked_list_label = QLabel("Empty List", wordWrap=100)
         self.picked_student_label = QLabel("00")
         self.picked_student_label.setFont(result_font)
         self.btn_pick_clicked_restart_flag = 0
@@ -64,8 +64,8 @@ class Numbers(QWidget):
         topLeftGroupBox1Layout.addWidget(self.picked_student_label)
 
         guideText = QLabel(
-            "Enter the number of students and click "
-            "the button to pick a random student.",
+            "Click create to replace the list. You can add or remove specific "
+            "students. Restarting will keep these changes.",
             wordWrap=1,
             margin=10,
         )
