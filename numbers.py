@@ -1,15 +1,10 @@
-#!/usr/bin/python
-
-
-import sys, random
-
+import random
 
 from PyQt6.QtCore import QSize, Qt
 from PyQt6.QtWidgets import (
     QWidget,
     QToolTip,
     QPushButton,
-    QApplication,
     QMainWindow,
     QGridLayout,
     QVBoxLayout,
@@ -22,26 +17,14 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtGui import QFont, QPalette, QColor
 
-from numbers import Numbers
 
+class Numbers(QWidget):
+    """A class to create a tab that use student numbers."""
 
-class StudentPicker(QMainWindow):
-    def __init__(self):
-        super(StudentPicker, self).__init__()
-
-        self.initUI()
-
-    def initUI(self):
-        """Init the app's UI."""
-        QApplication.setStyle(QStyleFactory.create("Fusion"))
-
-        self.setWindowTitle("Student Picker")
-        self.resize(QSize(400, 500))
-        self.setMinimumSize(QSize(400, 500))
-        self.move(300, 300)
-
+    def __init__(self, sp_app):
+        super().__init__()
         # Settings
-        def_ss = 3  # Default num of students
+        def_ss = 37  # Default num of students
         max_ss = 50  # Max num of students
 
         # Fonts
@@ -71,19 +54,7 @@ class StudentPicker(QMainWindow):
         mainLayout.addLayout(topRightLayout, 0, 1)
         mainLayout.addLayout(bottomLayout, 1, 0)
 
-        # Create tabs for the main window.
-        tab_widget = QTabWidget()
-        page_1 = Numbers(self)
-        page_2 = Numbers(self)
-        page_3 = Numbers(self)
-        tab_widget.addTab(page_1, "Numbers")
-        tab_widget.addTab(page_2, "Numbers class")
-        tab_widget.addTab(page_3, "Numbers again")
-
-        # Set the central widget of the window.
-        self.setCentralWidget(tab_widget)
-
-        self.show()
+        self.setLayout(mainLayout)
 
     def createTopLeftLayout(self, def_ss, max_ss):
         topLeftLayout = QVBoxLayout()
@@ -282,16 +253,3 @@ class StudentPicker(QMainWindow):
     def list_to_string(self, this_list):
         string = " ".join(list(map(str, this_list)))
         return string
-
-
-def main():
-
-    app = QApplication(sys.argv)
-
-    studentpicker = StudentPicker()
-
-    sys.exit(app.exec())
-
-
-if __name__ == "__main__":
-    main()
