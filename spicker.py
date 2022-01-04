@@ -36,10 +36,10 @@ class StudentPicker(QMainWindow):
 
         # Create tabs for the main window.
         tab_widget = QTabWidget()
-        page_1 = Numbers(self)
-        page_2 = Names(self)
-        tab_widget.addTab(page_1, "Numbers")
-        tab_widget.addTab(page_2, "Names")        
+        page_2 = Numbers(self)
+        page_1 = Names(self)
+        tab_widget.addTab(page_1, "Names") 
+        tab_widget.addTab(page_2, "Numbers")       
 
         # Set the central widget of the window.
         self.setCentralWidget(tab_widget)

@@ -17,6 +17,7 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtGui import QFont, QPalette, QColor
 
+
 class Names(QWidget):
     """A class to create a tab that use student numbers."""
 
@@ -31,7 +32,7 @@ class Names(QWidget):
         result_font.setPointSize(50)
 
         # Initialize variables.
-        self.ss_num_list = list(range(1, def_ss))
+        self.ss_name_list = ["Barry", "Ted", "Frank"]
         self.ss_picked_list = []
         self.resultsString = ""
         self.ss_unpicked_list_label = QLabel("Empty List", wordWrap=100)
@@ -74,16 +75,19 @@ class Names(QWidget):
         topLeftLayout.setContentsMargins(10, 10, 10, 10)
 
         # Create a textbox for a new list.
-        self.create_list_textbox = QPlainTextEdit(maximumWidth=100)
+        self.create_list_textbox = QPlainTextEdit(maximumWidth=1000)
+        self.create_list_textbox.setPlainText(
+            "George, Harry Smith, Sarah, Mina Kim"
+        )
 
         # Create a textbox for adding or removing students.
-        self.add_remove_textbox = QPlainTextEdit(maximumWidth=100)
+        self.add_remove_textbox = QPlainTextEdit(maximumWidth=1000, maximumHeight=25)
 
         # Create a layout for the create list textbox and button.
-        create_list_layout = QHBoxLayout()
+        create_list_layout = QVBoxLayout()
         create_list_layout.addWidget(self.create_list_textbox)
         create_list_layout.addWidget(self.btn_new_list)
-        create_list_layout.setContentsMargins(50, 10, 50, 10)
+        # create_list_layout.setContentsMargins(10, 10, 10, 10)
         topLeftLayout.addLayout(create_list_layout)
 
         # Create a layout for add/remove ss.
@@ -149,18 +153,18 @@ class Names(QWidget):
 
     def btn_add_student_clicked(self):
         """Add the student to the current list and update all lists."""
-        x = "PH"
-        if x not in self.ss_num_list:
-            self.ss_num_list.append(x)
+        x = self.add_remove_textbox.toPlainText().strip()
+        if x not in self.ss_name_list:
+            self.ss_name_list.append(x)
             self.ss_unpicked_list.append(x)
         self.ss_unpicked_list.sort()
         self.update_labels(self.last_picked_num)
 
     def btn_remove_student_clicked(self):
         """Remove the student to the current list and update all lists."""
-        x = "PH"
-        if x in self.ss_num_list:
-            self.ss_num_list.remove(x)
+        x = self.add_remove_textbox.toPlainText().strip()
+        if x in self.ss_name_list:
+            self.ss_name_list.remove(x)
         if x in self.ss_unpicked_list:
             self.ss_unpicked_list.remove(x)
         if x in self.ss_picked_list:
@@ -197,15 +201,16 @@ class Names(QWidget):
 
     def btn_new_list_clicked(self):
         """Create a new list based on the text box. Reset results."""
-        x = "PH"
-        self.ss_num_list = ["PH"]
-        self.ss_unpicked_list = self.ss_num_list.copy()
+        x = self.create_list_textbox.toPlainText()
+        y = x.split(",")
+        self.ss_name_list = [z.strip() for z in y]
+        self.ss_unpicked_list = self.ss_name_list.copy()
         self.ss_picked_list = []
         self.update_labels(0)
 
     def btn_restart_clicked(self):
         """Restart the lists based on current list."""
-        self.ss_unpicked_list = self.ss_num_list.copy()
+        self.ss_unpicked_list = self.ss_name_list.copy()
         self.ss_unpicked_list.sort()
         self.ss_picked_list.clear()
         self.update_labels(0)
