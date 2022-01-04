@@ -50,6 +50,8 @@ class Numbers(QWidget):
 
         # Main Layout
         mainLayout = QGridLayout()
+        mainLayout.setColumnStretch(0, 3)
+        mainLayout.setColumnStretch(1, 1)
         mainLayout.addLayout(topLeftLayout, 0, 0)
         mainLayout.addLayout(topRightLayout, 0, 1)
         mainLayout.addLayout(bottomLayout, 1, 0)
@@ -139,7 +141,7 @@ class Numbers(QWidget):
 
     def create_buttons(self):
         """Create buttons for the main window."""
-        self.btn_pick = QPushButton("Pick a Student", maximumWidth=1000)
+        self.btn_pick = QPushButton("Pick a Student", maximumWidth=200)
         self.btn_pick.clicked.connect(self.btn_pick_clicked)
 
         self.btn_restart = QPushButton("Restart", maximumWidth=100)

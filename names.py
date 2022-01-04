@@ -10,10 +10,12 @@ from PyQt6.QtWidgets import (
     QVBoxLayout,
     QHBoxLayout,
     QPlainTextEdit,
+    QLineEdit,
     QLabel,
     QGroupBox,
     QTabWidget,
     QStyleFactory,
+    QInputDialog,
 )
 from PyQt6.QtGui import QFont, QPalette, QColor
 
@@ -32,7 +34,7 @@ class Names(QWidget):
         result_font.setPointSize(50)
 
         # Initialize variables.
-        self.ss_name_list = ["Barry", "Ted", "Frank"]
+        self.ss_name_list = []
         self.ss_picked_list = []
         self.resultsString = ""
         self.ss_unpicked_list_label = QLabel("Empty List", wordWrap=100)
@@ -50,6 +52,8 @@ class Names(QWidget):
 
         # Main Layout
         mainLayout = QGridLayout()
+        mainLayout.setColumnStretch(0, 3)
+        mainLayout.setColumnStretch(1, 1)
         mainLayout.addLayout(topLeftLayout, 0, 0)
         mainLayout.addLayout(topRightLayout, 0, 1)
         mainLayout.addLayout(bottomLayout, 1, 0)
@@ -76,18 +80,21 @@ class Names(QWidget):
 
         # Create a textbox for a new list.
         self.create_list_textbox = QPlainTextEdit(maximumWidth=1000)
-        self.create_list_textbox.setPlainText(
-            "George, Harry Smith, Sarah, Mina Kim"
-        )
+        self.create_list_textbox.setPlainText("George, Harry Smith, Sarah, Mina")
 
         # Create a textbox for adding or removing students.
-        self.add_remove_textbox = QPlainTextEdit(maximumWidth=1000, maximumHeight=25)
+        self.add_remove_textbox = QLineEdit(maximumWidth=1000)
+        self.add_remove_textbox.returnPressed.connect(self.btn_add_student_clicked)
 
         # Create a layout for the create list textbox and button.
         create_list_layout = QVBoxLayout()
-        create_list_layout.addWidget(self.create_list_textbox)
-        create_list_layout.addWidget(self.btn_new_list)
-        # create_list_layout.setContentsMargins(10, 10, 10, 10)
+        # create_list_layout.addWidget(self.create_list_textbox)
+        # create_list_layout.addWidget(
+        #     self.btn_new_list, alignment=Qt.AlignmentFlag.AlignHCenter
+        # )
+        create_list_layout.addWidget(self.btn_new_list_dialog,
+            alignment=Qt.AlignmentFlag.AlignHCenter)
+        create_list_layout.setContentsMargins(0, 0, 0, 0)
         topLeftLayout.addLayout(create_list_layout)
 
         # Create a layout for add/remove ss.
@@ -95,7 +102,7 @@ class Names(QWidget):
         add_remove_layout.addWidget(self.add_remove_textbox)
         add_remove_layout.addWidget(self.btn_add_student)
         add_remove_layout.addWidget(self.btn_remove_student)
-        add_remove_layout.setContentsMargins(10, 10, 10, 10)
+        add_remove_layout.setContentsMargins(0, 10, 0, 10)
         topLeftLayout.addLayout(add_remove_layout)
 
         return topLeftLayout
@@ -121,8 +128,8 @@ class Names(QWidget):
         topRightGroupBox2Layout.addWidget(self.ss_picked_list_label)
         topRightLayout.addWidget(topRightGroupBox2)
 
-        self.ss_unpicked_list_label.setMaximumWidth(200)
-        self.ss_picked_list_label.setMaximumWidth(200)
+        self.ss_unpicked_list_label.setMaximumWidth(600)
+        self.ss_picked_list_label.setMaximumWidth(600)
 
         return topRightLayout
 
@@ -145,15 +152,18 @@ class Names(QWidget):
         self.btn_new_list = QPushButton("Create", maximumWidth=100)
         self.btn_new_list.clicked.connect(self.btn_new_list_clicked)
 
-        self.btn_add_student = QPushButton("Add", maximumWidth=100)
+        self.btn_new_list_dialog = QPushButton("Create New List", maximumWidth=250)
+        self.btn_new_list_dialog.clicked.connect(self.btn_new_list_dialog_clicked)
+
+        self.btn_add_student = QPushButton("Add", maximumWidth=50)
         self.btn_add_student.clicked.connect(self.btn_add_student_clicked)
 
-        self.btn_remove_student = QPushButton("Remove", maximumWidth=100)
+        self.btn_remove_student = QPushButton("Remove", maximumWidth=80)
         self.btn_remove_student.clicked.connect(self.btn_remove_student_clicked)
 
     def btn_add_student_clicked(self):
         """Add the student to the current list and update all lists."""
-        x = self.add_remove_textbox.toPlainText().strip()
+        x = self.add_remove_textbox.text().strip()
         if x not in self.ss_name_list:
             self.ss_name_list.append(x)
             self.ss_unpicked_list.append(x)
@@ -162,7 +172,7 @@ class Names(QWidget):
 
     def btn_remove_student_clicked(self):
         """Remove the student to the current list and update all lists."""
-        x = self.add_remove_textbox.toPlainText().strip()
+        x = self.add_remove_textbox.text().strip()
         if x in self.ss_name_list:
             self.ss_name_list.remove(x)
         if x in self.ss_unpicked_list:
@@ -202,11 +212,30 @@ class Names(QWidget):
     def btn_new_list_clicked(self):
         """Create a new list based on the text box. Reset results."""
         x = self.create_list_textbox.toPlainText()
-        y = x.split(",")
-        self.ss_name_list = [z.strip() for z in y]
+        x = set(x.split(","))
+        x = [z.strip() for z in x]
+        x = list(filter(None, x))
+        self.ss_name_list = x.copy()
         self.ss_unpicked_list = self.ss_name_list.copy()
         self.ss_picked_list = []
         self.update_labels(0)
+
+    def btn_new_list_dialog_clicked(self):
+        """Open a dialog for user to input list of names."""
+        prefill_text = self.list_to_string(self.ss_name_list)
+        text, ok = QInputDialog.getText(self, "Create new list",
+            "Type or paste student names here,\nseparated by a comma (,).",
+            text=prefill_text)
+        if ok:
+            x = text
+            x = set(x.split(","))
+            x = [z.strip() for z in x]
+            x = list(filter(None, x))
+            x.sort()
+            self.ss_name_list = x.copy()
+            self.ss_unpicked_list = self.ss_name_list.copy()
+            self.ss_picked_list = []
+            self.update_labels(0)
 
     def btn_restart_clicked(self):
         """Restart the lists based on current list."""
@@ -249,5 +278,5 @@ class Names(QWidget):
         self.btn_pick_enable_check()
 
     def list_to_string(self, this_list):
-        string = " ".join(list(map(str, this_list)))
+        string = ", ".join(list(map(str, this_list)))
         return string
