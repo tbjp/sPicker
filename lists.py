@@ -5,7 +5,7 @@
 
 import random
 
-from PyQt6.QtCore import QSize, Qt
+from PyQt6.QtCore import QSize, Qt, QStringListModel
 from PyQt6.QtWidgets import (
     QWidget,
     QToolTip,
@@ -23,6 +23,7 @@ from PyQt6.QtWidgets import (
     QInputDialog,
     QListWidget,
     QListWidgetItem,
+    QListView,
 )
 from PyQt6.QtGui import QFont, QPalette, QColor
 
@@ -122,18 +123,19 @@ class Lists(QWidget):
         # --- Unpicked students group box
         topRightGroupBox1 = QGroupBox("Unpicked Students")
         topRightGroupBox1Layout = QVBoxLayout()
-        self.ss_unpicked_list_widget = QListWidget(parent=topRightGroupBox1)
+        self.ss_unpicked_list_view = QListView(parent=topRightGroupBox1)
         self.ss_picked_list_label = QLabel("No results.", wordWrap=1000)  # delete
-        self.btn_new_list_clicked()
+        self.btn_new_list_clicked() # To init sample list
         topRightGroupBox1.setLayout(topRightGroupBox1Layout)
-        topRightGroupBox1Layout.addWidget(self.ss_unpicked_list_widget)
+        topRightGroupBox1Layout.addWidget(self.ss_unpicked_list_view)
         topRightLayout.addWidget(topRightGroupBox1)
 
         # --- Picked students group box
         topRightGroupBox2 = QGroupBox("Picked Students")
         topRightGroupBox2Layout = QVBoxLayout()
-        self.ss_picked_list_widget = QListWidget(parent=topRightGroupBox2)
-        topRightGroupBox2Layout.addWidget(self.ss_picked_list_widget)
+        self.ss_picked_list_view = QListView(parent=topRightGroupBox2)
+        self.create_string_models() # Has to be after creating sample list
+        topRightGroupBox2Layout.addWidget(self.ss_picked_list_view)
         topRightGroupBox2.setLayout(topRightGroupBox2Layout)
         topRightLayout.addWidget(topRightGroupBox2)
 
@@ -146,6 +148,14 @@ class Lists(QWidget):
         bottomLayout.addWidget(self.btn_restart)
 
         return bottomLayout
+
+    def create_string_models(self):
+        """Create a model of names to provide strings to views."""
+        self.ss_unpicked_model = QStringListModel(self.ss_name_list)
+        self.ss_unpicked_list_view.setModel(self.ss_unpicked_model) # Apply model
+        self.ss_picked_model = QStringListModel()
+        self.ss_picked_list_view.setModel(self.ss_picked_model)
+
 
     def create_buttons(self):
         """Create buttons for the main window."""
@@ -172,12 +182,12 @@ class Lists(QWidget):
         x = self.add_remove_textbox.text().strip()
         if x not in self.ss_name_list:
             self.ss_name_list.append(x)
-            self.ss_unpicked_list.append(x)
-        self.ss_unpicked_list.sort()
-        self.update_labels(self.last_picked_num)
+            self.model_insert_name(self.ss_unpicked_model, x)
+            self.ss_unpicked_model.sort(0) # 0 = column
 
     def btn_remove_student_clicked(self):
         """Remove the student to the current list and update all lists."""
+        # Might be redundant after making lists editable
         x = self.add_remove_textbox.text().strip()
         if x in self.ss_name_list:
             self.ss_name_list.remove(x)
@@ -185,8 +195,16 @@ class Lists(QWidget):
             self.ss_unpicked_list.remove(x)
         if x in self.ss_picked_list:
             self.ss_picked_list.remove(x)
-        self.ss_unpicked_list.sort()
-        self.update_labels(self.last_picked_num)
+        self.ss_unpicked_model.sort(0)
+
+    def model_insert_name(self, model, name):
+        '''Insert a name at the top of the passed model.'''
+        model.insertRow(0)
+        index = model.index(0)
+        model.setData(index, name)
+
+    # def model_remove_name(self, model, row):
+    #       Made not be needed
 
     def btn_pick_clicked(self):
         """Pick a student from the list, show result (and remove)."""
@@ -197,15 +215,19 @@ class Lists(QWidget):
 
         if x:
             rf = 0  # Still students in list
-            randomValue = random.choice(x)
-            print(randomValue)
-            self.ss_unpicked_list.remove(randomValue)
-            self.ss_unpicked_list_widget.takeItem(randomValue)
-            self.ss_picked_list.append(randomValue)
-            self.ss_picked_list_widget.addItem(randomValue)
-            self.update_labels(randomValue)
+            rowCount = self.ss_unpicked_model.rowCount()
+            print(f"NumRows: {rowCount}")
+            randomValue = random.randrange(0, rowCount)
+            print(f"Selected: {randomValue}")
+            index = self.ss_unpicked_model.index(randomValue)
+            picked = self.ss_unpicked_model.data(index)
+            print(f"Index data:{picked}")
+            self.ss_unpicked_model.removeRows(randomValue, 1)
+            self.model_insert_name(self.ss_picked_model, picked)
             self.last_picked_num = randomValue
+            self.picked_student_label.setText(picked)
             print(f"RF: {rf}")
+            self.btn_pick_enable_check()
 
         if not x and rf == 0:
             rf = 1
@@ -226,10 +248,7 @@ class Lists(QWidget):
         self.ss_name_list = x.copy()
         self.ss_unpicked_list = self.ss_name_list.copy()
         self.ss_picked_list = []
-        self.update_labels(0)
-
-        # New behaviour
-        self.ss_unpicked_list_widget.addItems(self.ss_name_list)
+        self.picked_student_label.setText("--")
 
     def btn_new_list_dialog_clicked(self):
         """Open a dialog for user to input list of names."""
@@ -250,21 +269,15 @@ class Lists(QWidget):
             print(x)
             x.sort()
             self.ss_name_list = x.copy()
-            self.ss_unpicked_list = self.ss_name_list.copy()
-            self.ss_picked_list = []
-            self.update_labels(0)
-
-            # New behaviour
-            self.ss_unpicked_list_widget.clear()
-            self.ss_picked_list_widget.clear()
-            self.ss_unpicked_list_widget.addItems(self.ss_unpicked_list)
+            self.create_string_models()
+            self.picked_student_label.setText("--")
 
     def btn_restart_clicked(self):
         """Restart the lists based on current list."""
         self.ss_unpicked_list = self.ss_name_list.copy()
         self.ss_unpicked_list.sort()
         self.ss_picked_list.clear()
-        self.update_labels(0)
+        self.picked_student_label.setText("--")
 
     def btn_pick_enable_check(self):
         """Check if the pick button should be enabled or disabled."""
@@ -277,27 +290,6 @@ class Lists(QWidget):
             self.btn_restart.setEnabled(1)
         else:
             self.btn_restart.setDisabled(1)
-
-    def update_labels(self, current_num=0):
-        """Update labels and buttons based on current lists."""
-        if self.ss_picked_list:
-            pl = self.list_to_string(self.ss_picked_list)
-            self.ss_picked_list_label.setText(pl)
-        else:
-            self.ss_picked_list_label.setText("No results.")
-
-        if self.ss_unpicked_list:
-            upl = self.list_to_string(self.ss_unpicked_list)
-            self.ss_unpicked_list_label.setText(upl)
-        else:
-            self.ss_unpicked_list_label.setText("All students picked.")
-
-        if current_num == 0:
-            self.picked_student_label.setText("--")
-        else:
-            self.picked_student_label.setText(str(current_num))
-
-        self.btn_pick_enable_check()
 
     def list_to_string(self, this_list):
         string = ", ".join(list(map(str, this_list)))
