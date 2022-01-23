@@ -55,15 +55,15 @@ class Lists(QWidget):
         self.create_buttons()
 
         topLeftLayout = self.createTopLeftLayout(def_ss, max_ss)
-        topRightLayout = self.createTopRightLayout()
+        # topRightLayout = self.createTopRightLayout()
         bottomLayout = self.createBottomLayout()
 
         # Main Layout
         mainLayout = QGridLayout()
-        mainLayout.setColumnStretch(0, 3)
-        mainLayout.setColumnStretch(1, 1)
+        #mainLayout.setColumnStretch(0, 3) # Relic from 2 column layout
+        #mainLayout.setColumnStretch(1, 1)
         mainLayout.addLayout(topLeftLayout, 0, 0)
-        mainLayout.addLayout(topRightLayout, 0, 1)
+        # mainLayout.addLayout(topRightLayout, 0, 1)
         mainLayout.addLayout(bottomLayout, 1, 0)
 
         self.setLayout(mainLayout)
@@ -83,7 +83,7 @@ class Lists(QWidget):
         )
 
         topLeftLayout.addWidget(topLeftGroupBox1)
-        topLeftLayout.addWidget(guideText)
+        # topLeftLayout.addWidget(guideText)
         topLeftLayout.setContentsMargins(10, 10, 10, 10)
 
         # Create a textbox for a new list.
@@ -94,12 +94,12 @@ class Lists(QWidget):
         self.add_remove_textbox = QLineEdit(maximumWidth=1000)
         self.add_remove_textbox.returnPressed.connect(self.btn_add_student_clicked)
 
+        # Create student lists.
+        topRightLayout = self.createTopRightLayout()
+        topLeftLayout.addLayout(topRightLayout)
+
         # Create a layout for the create list textbox and button.
         create_list_layout = QVBoxLayout()
-        # create_list_layout.addWidget(self.create_list_textbox)
-        # create_list_layout.addWidget(
-        #     self.btn_new_list, alignment=Qt.AlignmentFlag.AlignHCenter
-        # )
         create_list_layout.addWidget(
             self.btn_new_list_dialog, alignment=Qt.AlignmentFlag.AlignHCenter
         )
@@ -116,9 +116,9 @@ class Lists(QWidget):
 
         return topLeftLayout
 
-    def createTopRightLayout(self):
+    def createTopRightLayout(self): # Student lists. (Was top right.)
         # Top right box - lists and results
-        topRightLayout = QVBoxLayout()
+        topRightLayout = QHBoxLayout()
 
         # --- Unpicked students group box
         topRightGroupBox1 = QGroupBox("Unpicked Students")
@@ -155,6 +155,7 @@ class Lists(QWidget):
         self.ss_unpicked_list_view.setModel(self.ss_unpicked_model) # Apply model
         self.ss_picked_model = QStringListModel()
         self.ss_picked_list_view.setModel(self.ss_picked_model)
+        self.btn_pick_enable_check()
 
 
     def create_buttons(self):
@@ -208,36 +209,18 @@ class Lists(QWidget):
 
     def btn_pick_clicked(self):
         """Pick a student from the list, show result (and remove)."""
-        x = self.ss_unpicked_list
-        print(x)
-
-        rf = self.btn_pick_clicked_restart_flag
-
-        if x:
-            rf = 0  # Still students in list
-            rowCount = self.ss_unpicked_model.rowCount()
-            print(f"NumRows: {rowCount}")
-            randomValue = random.randrange(0, rowCount)
-            print(f"Selected: {randomValue}")
-            index = self.ss_unpicked_model.index(randomValue)
-            picked = self.ss_unpicked_model.data(index)
-            print(f"Index data:{picked}")
-            self.ss_unpicked_model.removeRows(randomValue, 1)
-            self.model_insert_name(self.ss_picked_model, picked)
-            self.last_picked_num = randomValue
-            self.picked_student_label.setText(picked)
-            print(f"RF: {rf}")
-            self.btn_pick_enable_check()
-
-        if not x and rf == 0:
-            rf = 1
-            print(f"RF: {rf}")
-
-        if rf == 1:  # No students in list.
-            self.ss_unpicked_list_label.setText("All students picked.")
-            self.btn_pick.setDisabled(1)
-
-        self.btn_pick_clicked_restart_flag = rf  # Update global var
+        rowCount = self.ss_unpicked_model.rowCount()
+        print(f"NumRows: {rowCount}")
+        randomValue = random.randrange(0, rowCount)
+        print(f"Selected: {randomValue}")
+        index = self.ss_unpicked_model.index(randomValue)
+        picked = self.ss_unpicked_model.data(index)
+        print(f"Index data:{picked}")
+        self.ss_unpicked_model.removeRows(randomValue, 1)
+        self.model_insert_name(self.ss_picked_model, picked)
+        self.last_picked_num = randomValue
+        self.picked_student_label.setText(picked)
+        self.btn_pick_enable_check()
 
     def btn_new_list_clicked(self):  # Perhaps redundant but still used on startup
         """Create a new list based on the text box. Reset results."""
@@ -262,31 +245,46 @@ class Lists(QWidget):
         if ok:
             x = text
             x = x.split(",")
-            x = [z.strip() for z in x]  # Remove whitespace
-            x = set(x)  # Remove duplicates
-            x = list(filter(None, x))  # Remove empty strings and return to list
-            # x = list(set(x))
+            x = self.clean_list(x)
             print(x)
             x.sort()
             self.ss_name_list = x.copy()
             self.create_string_models()
             self.picked_student_label.setText("--")
 
+    def clean_list(self, x):
+        """Remove dups, whitespace and empty strings from a list."""
+        x = [z.strip() for z in x]  # Remove whitespace
+        x = set(x)  # Remove duplicates
+        x = list(filter(None, x))  # Remove empty strings and return to list
+        x.sort()
+        return x
+
     def btn_restart_clicked(self):
         """Restart the lists based on current list."""
-        self.ss_unpicked_list = self.ss_name_list.copy()
-        self.ss_unpicked_list.sort()
-        self.ss_picked_list.clear()
-        self.picked_student_label.setText("--")
+        picked = self.ss_picked_model.stringList()
+        unpicked = self.ss_unpicked_model.stringList()
+        combined = picked + unpicked
+        print(f"Combined: {combined}")
+        combined = self.clean_list(combined)
+        print(f"Combined Dups: {combined}")
+        self.ss_name_list = combined.copy() # Update global variable.
+        self.create_string_models() # Recreate models based on combined list.
+        self.btn_pick_enable_check()
 
     def btn_pick_enable_check(self):
         """Check if the pick button should be enabled or disabled."""
-        if self.ss_unpicked_list:
+        unpicked_rows = self.ss_unpicked_model.rowCount()
+        picked_rows = self.ss_picked_model.rowCount()
+        print(unpicked_rows)
+        print(picked_rows)
+
+        if self.ss_unpicked_model.rowCount() >= 1:
             self.btn_pick.setEnabled(1)
         else:
             self.btn_pick.setDisabled(1)
 
-        if self.ss_picked_list:
+        if self.ss_picked_model.rowCount() >= 1:
             self.btn_restart.setEnabled(1)
         else:
             self.btn_restart.setDisabled(1)
