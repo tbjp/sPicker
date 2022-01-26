@@ -5,7 +5,7 @@
 
 import random
 
-from PyQt6.QtCore import QSize, Qt, QStringListModel
+from PyQt6.QtCore import QSize, Qt, QStringListModel, QEvent
 from PyQt6.QtWidgets import (
     QWidget,
     QToolTip,
@@ -21,11 +21,10 @@ from PyQt6.QtWidgets import (
     QTabWidget,
     QStyleFactory,
     QInputDialog,
-    QListWidget,
-    QListWidgetItem,
     QListView,
+    QMenu,
 )
-from PyQt6.QtGui import QFont, QPalette, QColor
+from PyQt6.QtGui import QFont, QPalette, QColor, QAction, QContextMenuEvent
 
 
 class Lists(QWidget):
@@ -60,8 +59,8 @@ class Lists(QWidget):
 
         # Main Layout
         mainLayout = QGridLayout()
-        #mainLayout.setColumnStretch(0, 3) # Relic from 2 column layout
-        #mainLayout.setColumnStretch(1, 1)
+        # mainLayout.setColumnStretch(0, 3) # Relic from 2 column layout
+        # mainLayout.setColumnStretch(1, 1)
         mainLayout.addLayout(topLeftLayout, 0, 0)
         # mainLayout.addLayout(topRightLayout, 0, 1)
         mainLayout.addLayout(bottomLayout, 1, 0)
@@ -116,16 +115,21 @@ class Lists(QWidget):
 
         return topLeftLayout
 
-    def createTopRightLayout(self): # Student lists. (Was top right.)
+    def createTopRightLayout(self):  # Student lists. (Was top right.)
         # Top right box - lists and results
         topRightLayout = QHBoxLayout()
 
         # --- Unpicked students group box
         topRightGroupBox1 = QGroupBox("Unpicked Students")
         topRightGroupBox1Layout = QVBoxLayout()
-        self.ss_unpicked_list_view = QListView(parent=topRightGroupBox1)
-        self.ss_picked_list_label = QLabel("No results.", wordWrap=1000)  # delete
-        self.btn_new_list_clicked() # To init sample list
+        self.ss_unpicked_list_view = QListView()
+        self.ss_unpicked_list_view.customContextMenuRequested.connect(self.listMenu)
+        self.ss_unpicked_list_view.setContextMenuPolicy(
+            Qt.ContextMenuPolicy.CustomContextMenu
+        )  # Set right click menu to actions
+
+        self.btn_new_list_clicked()  # To init sample list
+
         topRightGroupBox1.setLayout(topRightGroupBox1Layout)
         topRightGroupBox1Layout.addWidget(self.ss_unpicked_list_view)
         topRightLayout.addWidget(topRightGroupBox1)
@@ -134,12 +138,36 @@ class Lists(QWidget):
         topRightGroupBox2 = QGroupBox("Picked Students")
         topRightGroupBox2Layout = QVBoxLayout()
         self.ss_picked_list_view = QListView(parent=topRightGroupBox2)
-        self.create_string_models() # Has to be after creating sample list
+        self.create_string_models()  # Has to be after creating sample list
         topRightGroupBox2Layout.addWidget(self.ss_picked_list_view)
         topRightGroupBox2.setLayout(topRightGroupBox2Layout)
         topRightLayout.addWidget(topRightGroupBox2)
 
+        # --- Create actions for context menu
+        pick_action = QAction('Pick', None)
+        pick_action.triggered.connect(self.pick_action)
+        remove_action = QAction('Remove', None)
+        self.ss_unpicked_list_view.addAction(pick_action)
+        self.ss_picked_list_view.addAction(remove_action)
+
         return topRightLayout
+
+    def pick_action(self):
+        pass
+
+    def listMenu(self, position):
+        selected = self.ss_unpicked_list_view.currentIndex()
+        print(self.ss_unpicked_model.data(selected))
+        cmenu = QMenu()
+
+        pick = cmenu.addAction("Pick")
+        remove = cmenu.addAction("Remove")
+        action = cmenu.exec(self.ss_unpicked_list_view.mapToGlobal(position))
+
+        if action == pick:
+            print("PICK IT")
+        elif action == remove:
+            print("REMOVE")
 
     def createBottomLayout(self):
         # Bottom box - big button
@@ -152,11 +180,10 @@ class Lists(QWidget):
     def create_string_models(self):
         """Create a model of names to provide strings to views."""
         self.ss_unpicked_model = QStringListModel(self.ss_name_list)
-        self.ss_unpicked_list_view.setModel(self.ss_unpicked_model) # Apply model
+        self.ss_unpicked_list_view.setModel(self.ss_unpicked_model)  # Apply model
         self.ss_picked_model = QStringListModel()
         self.ss_picked_list_view.setModel(self.ss_picked_model)
         self.btn_pick_enable_check()
-
 
     def create_buttons(self):
         """Create buttons for the main window."""
@@ -184,7 +211,7 @@ class Lists(QWidget):
         if x not in self.ss_name_list:
             self.ss_name_list.append(x)
             self.model_insert_name(self.ss_unpicked_model, x)
-            self.ss_unpicked_model.sort(0) # 0 = column
+            self.ss_unpicked_model.sort(0)  # 0 = column
 
     def btn_remove_student_clicked(self):
         """Remove the student to the current list and update all lists."""
@@ -199,7 +226,7 @@ class Lists(QWidget):
         self.ss_unpicked_model.sort(0)
 
     def model_insert_name(self, model, name):
-        '''Insert a name at the top of the passed model.'''
+        """Insert a name at the top of the passed model."""
         model.insertRow(0)
         index = model.index(0)
         model.setData(index, name)
@@ -268,8 +295,8 @@ class Lists(QWidget):
         print(f"Combined: {combined}")
         combined = self.clean_list(combined)
         print(f"Combined Dups: {combined}")
-        self.ss_name_list = combined.copy() # Update global variable.
-        self.create_string_models() # Recreate models based on combined list.
+        self.ss_name_list = combined.copy()  # Update global variable.
+        self.create_string_models()  # Recreate models based on combined list.
         self.btn_pick_enable_check()
 
     def btn_pick_enable_check(self):
