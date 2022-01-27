@@ -44,7 +44,6 @@ class Lists(QWidget):
         self.ss_name_list = []
         self.ss_picked_list = []
         self.resultsString = ""
-        self.ss_unpicked_list_label = QLabel("Empty List", wordWrap=100)
         self.picked_student_label = QLabel("00")
         self.picked_student_label.setFont(result_font)
         self.btn_pick_clicked_restart_flag = 0
@@ -82,7 +81,6 @@ class Lists(QWidget):
         )
 
         topLeftLayout.addWidget(topLeftGroupBox1)
-        # topLeftLayout.addWidget(guideText)
         topLeftLayout.setContentsMargins(10, 10, 10, 10)
 
         # Create a textbox for a new list.
@@ -97,20 +95,12 @@ class Lists(QWidget):
         topRightLayout = self.createTopRightLayout()
         topLeftLayout.addLayout(topRightLayout)
 
-        # Create a layout for the create list textbox and button.
-        create_list_layout = QVBoxLayout()
-        create_list_layout.addWidget(
-            self.btn_new_list_dialog, alignment=Qt.AlignmentFlag.AlignHCenter
-        )
-        create_list_layout.setContentsMargins(0, 0, 0, 0)
-        topLeftLayout.addLayout(create_list_layout)
-
         # Create a layout for add/remove ss.
         add_remove_layout = QHBoxLayout()
         add_remove_layout.addWidget(self.add_remove_textbox)
         add_remove_layout.addWidget(self.btn_add_student)
-        add_remove_layout.addWidget(self.btn_remove_student)
-        add_remove_layout.setContentsMargins(0, 10, 0, 10)
+        add_remove_layout.addWidget(self.btn_new_list_dialog)
+        add_remove_layout.setContentsMargins(0, 10, 0, 0)
         topLeftLayout.addLayout(add_remove_layout)
 
         return topLeftLayout
@@ -123,7 +113,7 @@ class Lists(QWidget):
         topRightGroupBox1 = QGroupBox("Unpicked Students")
         topRightGroupBox1Layout = QVBoxLayout()
         self.ss_unpicked_list_view = QListView()
-        self.ss_unpicked_list_view.customContextMenuRequested.connect(self.listMenu)
+        self.ss_unpicked_list_view.customContextMenuRequested.connect(self.unpicked_list_menu)
         self.ss_unpicked_list_view.setContextMenuPolicy(
             Qt.ContextMenuPolicy.CustomContextMenu
         )  # Set right click menu to actions
@@ -137,41 +127,22 @@ class Lists(QWidget):
         # --- Picked students group box
         topRightGroupBox2 = QGroupBox("Picked Students")
         topRightGroupBox2Layout = QVBoxLayout()
-        self.ss_picked_list_view = QListView(parent=topRightGroupBox2)
+        self.ss_picked_list_view = QListView()
+        self.ss_picked_list_view.customContextMenuRequested.connect(self.picked_list_menu)
+        self.ss_picked_list_view.setContextMenuPolicy(
+            Qt.ContextMenuPolicy.CustomContextMenu
+        )  # Set right click menu to use custom
         self.create_string_models()  # Has to be after creating sample list
         topRightGroupBox2Layout.addWidget(self.ss_picked_list_view)
         topRightGroupBox2.setLayout(topRightGroupBox2Layout)
         topRightLayout.addWidget(topRightGroupBox2)
 
-        # --- Create actions for context menu
-        pick_action = QAction('Pick', None)
-        pick_action.triggered.connect(self.pick_action)
-        remove_action = QAction('Remove', None)
-        self.ss_unpicked_list_view.addAction(pick_action)
-        self.ss_picked_list_view.addAction(remove_action)
-
         return topRightLayout
-
-    def pick_action(self):
-        pass
-
-    def listMenu(self, position):
-        selected = self.ss_unpicked_list_view.currentIndex()
-        print(self.ss_unpicked_model.data(selected))
-        cmenu = QMenu()
-
-        pick = cmenu.addAction("Pick")
-        remove = cmenu.addAction("Remove")
-        action = cmenu.exec(self.ss_unpicked_list_view.mapToGlobal(position))
-
-        if action == pick:
-            print("PICK IT")
-        elif action == remove:
-            print("REMOVE")
 
     def createBottomLayout(self):
         # Bottom box - big button
         bottomLayout = QHBoxLayout()
+        bottomLayout.setContentsMargins(10, 0, 10, 0)
         bottomLayout.addWidget(self.btn_pick)
         bottomLayout.addWidget(self.btn_restart)
 
@@ -202,9 +173,6 @@ class Lists(QWidget):
         self.btn_add_student = QPushButton("Add", maximumWidth=50)
         self.btn_add_student.clicked.connect(self.btn_add_student_clicked)
 
-        self.btn_remove_student = QPushButton("Remove", maximumWidth=80)
-        self.btn_remove_student.clicked.connect(self.btn_remove_student_clicked)
-
     def btn_add_student_clicked(self):
         """Add the student to the current list and update all lists."""
         x = self.add_remove_textbox.text().strip()
@@ -213,37 +181,22 @@ class Lists(QWidget):
             self.model_insert_name(self.ss_unpicked_model, x)
             self.ss_unpicked_model.sort(0)  # 0 = column
 
-    def btn_remove_student_clicked(self):
-        """Remove the student to the current list and update all lists."""
-        # Might be redundant after making lists editable
-        x = self.add_remove_textbox.text().strip()
-        if x in self.ss_name_list:
-            self.ss_name_list.remove(x)
-        if x in self.ss_unpicked_list:
-            self.ss_unpicked_list.remove(x)
-        if x in self.ss_picked_list:
-            self.ss_picked_list.remove(x)
-        self.ss_unpicked_model.sort(0)
-
     def model_insert_name(self, model, name):
         """Insert a name at the top of the passed model."""
         model.insertRow(0)
         index = model.index(0)
         model.setData(index, name)
 
-    # def model_remove_name(self, model, row):
-    #       Made not be needed
-
     def btn_pick_clicked(self):
         """Pick a student from the list, show result (and remove)."""
-        rowCount = self.ss_unpicked_model.rowCount()
+        rowCount = self.ss_unpicked_model.rowCount()  # Get size of list
         print(f"NumRows: {rowCount}")
-        randomValue = random.randrange(0, rowCount)
+        randomValue = random.randrange(0, rowCount)  # Pick random
         print(f"Selected: {randomValue}")
-        index = self.ss_unpicked_model.index(randomValue)
-        picked = self.ss_unpicked_model.data(index)
+        index = self.ss_unpicked_model.index(randomValue)  # Get index of picked
+        picked = self.ss_unpicked_model.data(index)  # Get picked string
         print(f"Index data:{picked}")
-        self.ss_unpicked_model.removeRows(randomValue, 1)
+        self.ss_unpicked_model.removeRows(randomValue, 1)  # Remove picked
         self.model_insert_name(self.ss_picked_model, picked)
         self.last_picked_num = randomValue
         self.picked_student_label.setText(picked)
@@ -279,6 +232,70 @@ class Lists(QWidget):
             self.create_string_models()
             self.picked_student_label.setText("--")
 
+    def unpicked_list_menu(self, position):
+        selected = self.ss_unpicked_list_view.currentIndex()
+        selected_name = self.ss_unpicked_model.data(selected)
+        
+        cmenu = QMenu()
+        pick = cmenu.addAction("Pick selected")
+        remove = cmenu.addAction("Remove")
+        action = cmenu.exec(self.ss_unpicked_list_view.mapToGlobal(position))
+
+        rowCount = self.ss_unpicked_model.rowCount()
+
+        print(f"Row count:{rowCount}")
+
+        if rowCount <= 0: # If list empty do nothing
+            pass
+        elif action == pick:
+            print("PICK IT")
+            for n in range(rowCount): # Find the row to remove
+                if self.ss_unpicked_model.index(n) == selected:
+                    self.ss_unpicked_model.removeRows(n, 1)
+
+            self.model_insert_name(self.ss_picked_model, selected_name)
+
+        elif action == remove:
+            print("REMOVE")
+            for n in range(rowCount): # Find the row to remove
+                if self.ss_unpicked_model.index(n) == selected:
+                    self.ss_unpicked_model.removeRows(n, 1)
+
+        self.btn_pick_enable_check()
+        self.update_name_list()
+
+    def picked_list_menu(self, position):
+        selected = self.ss_picked_list_view.currentIndex()
+        selected_name = self.ss_picked_model.data(selected)
+        
+        cmenu = QMenu()
+        unpick = cmenu.addAction("Unpick selected")
+        remove = cmenu.addAction("Remove")
+        action = cmenu.exec(self.ss_picked_list_view.mapToGlobal(position))
+
+        rowCount = self.ss_picked_model.rowCount()
+
+        print(f"Row count:{rowCount}")
+
+        if rowCount <= 0: # If list empty do nothing
+            pass
+        elif action == unpick:
+            print("PICK IT")
+            for n in range(rowCount): # Find the row to remove
+                if self.ss_picked_model.index(n) == selected:
+                    self.ss_picked_model.removeRows(n, 1)
+
+            self.model_insert_name(self.ss_unpicked_model, selected_name)
+
+        elif action == remove:
+            print("REMOVE")
+            for n in range(rowCount): # Find the row to remove
+                if self.ss_picked_model.index(n) == selected:
+                    self.ss_picked_model.removeRows(n, 1)
+
+        self.btn_pick_enable_check()
+        self.update_name_list()
+
     def clean_list(self, x):
         """Remove dups, whitespace and empty strings from a list."""
         x = [z.strip() for z in x]  # Remove whitespace
@@ -289,15 +306,21 @@ class Lists(QWidget):
 
     def btn_restart_clicked(self):
         """Restart the lists based on current list."""
+        combined = self.update_name_list()
+        self.ss_name_list = combined.copy()  # Update global variable.
+        self.create_string_models()  # Recreate models based on combined list.
+        self.btn_pick_enable_check()
+
+    def update_name_list(self):
+        """Updates simple name list to match model of both lists."""
         picked = self.ss_picked_model.stringList()
         unpicked = self.ss_unpicked_model.stringList()
         combined = picked + unpicked
         print(f"Combined: {combined}")
         combined = self.clean_list(combined)
         print(f"Combined Dups: {combined}")
-        self.ss_name_list = combined.copy()  # Update global variable.
-        self.create_string_models()  # Recreate models based on combined list.
-        self.btn_pick_enable_check()
+        self.ss_name_list = combined.copy()  # Update global variable.        
+        return combined
 
     def btn_pick_enable_check(self):
         """Check if the pick button should be enabled or disabled."""
