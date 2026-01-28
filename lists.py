@@ -47,7 +47,8 @@ class Lists(QWidget):
         self.ss_name_list = []
         self.ss_picked_list = []
         self.resultsString = ""
-        self.picked_student_label = QLabel("00")
+        self.picked_student_label = QLabel("--")
+        self.picked_student_label.setObjectName("picked_student_label")
         self.picked_student_label.setFont(result_font)
         self.btn_pick_clicked_restart_flag = 0
         self.last_picked_num = 0
@@ -86,6 +87,7 @@ class Lists(QWidget):
             wordWrap=1,
             margin=10,
         )
+        guideText.setObjectName("guide_text")
 
         topLeftLayout.addWidget(topLeftGroupBox1)
         topLeftLayout.setContentsMargins(10, 10, 10, 10)
@@ -96,6 +98,7 @@ class Lists(QWidget):
 
         # Create a textbox for adding or removing students.
         self.add_remove_textbox = QLineEdit(maximumWidth=1000)
+        self.add_remove_textbox.setPlaceholderText("Type student name...")
         self.add_remove_textbox.returnPressed.connect(self.btn_add_student_clicked)
 
         # Create student lists.
@@ -157,9 +160,9 @@ class Lists(QWidget):
     def createBottomLayout(self):
         # Bottom box - big button
         bottomLayout = QHBoxLayout()
-        bottomLayout.setContentsMargins(10, 0, 10, 0)
-        bottomLayout.addWidget(self.btn_pick)
-        bottomLayout.addWidget(self.btn_restart)
+        bottomLayout.setContentsMargins(10, 0, 10, 10)
+        bottomLayout.addWidget(self.btn_pick, 1)
+        bottomLayout.addWidget(self.btn_restart, 1)
 
         return bottomLayout
 
@@ -173,25 +176,27 @@ class Lists(QWidget):
 
     def create_buttons(self):
         """Create buttons for the main window."""
-        self.btn_pick = QPushButton("Pick a Student", maximumWidth=1000)
+        self.btn_pick = QPushButton("🎯 Pick a Student", maximumWidth=1000)
+        self.btn_pick.setObjectName("btn_pick")
         self.btn_pick.clicked.connect(self.btn_pick_clicked)
 
-        self.btn_restart = QPushButton("Restart", maximumWidth=100)
+        self.btn_restart = QPushButton("🔄 Restart", maximumWidth=1000)
+        self.btn_restart.setObjectName("btn_restart")
         self.btn_restart.clicked.connect(self.btn_restart_clicked)
 
-        self.btn_new_list = QPushButton("Create", maximumWidth=100)
+        self.btn_new_list = QPushButton("✨ Create", maximumWidth=100)
         self.btn_new_list.clicked.connect(self.btn_new_list_clicked)
 
-        self.btn_new_list_dialog = QPushButton("Create New List", maximumWidth=250)
+        self.btn_new_list_dialog = QPushButton("📝 Create New List", maximumWidth=250)
         self.btn_new_list_dialog.clicked.connect(self.btn_new_list_dialog_clicked)
 
-        self.btn_add_student = QPushButton("Add", maximumWidth=50)
+        self.btn_add_student = QPushButton("➕ Add", maximumWidth=60)
         self.btn_add_student.clicked.connect(self.btn_add_student_clicked)
 
-        self.btn_save_list = QPushButton("Save Current", maximumWidth=120)
+        self.btn_save_list = QPushButton("💾 Save Current", maximumWidth=130)
         self.btn_save_list.clicked.connect(self.save_list_clicked)
 
-        self.btn_delete_list = QPushButton("Delete", maximumWidth=80)
+        self.btn_delete_list = QPushButton("🗑️ Delete", maximumWidth=100)
         self.btn_delete_list.clicked.connect(self.delete_list_clicked)
 
         self.list_picker = QComboBox()

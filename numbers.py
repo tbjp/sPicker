@@ -35,8 +35,9 @@ class Numbers(QWidget):
         self.ss_num_list = list(range(1, def_ss))
         self.ss_picked_list = []
         self.resultsString = ""
-        self.ss_unpicked_list_label = QLabel("Empty List", wordWrap=100)
-        self.picked_student_label = QLabel("00")
+        self.ss_unpicked_list_label = QLabel("Empty List", wordWrap=1000)
+        self.picked_student_label = QLabel("--")
+        self.picked_student_label.setObjectName("picked_student_label")
         self.picked_student_label.setFont(result_font)
         self.btn_pick_clicked_restart_flag = 0
         self.last_picked_num = 0
@@ -72,6 +73,7 @@ class Numbers(QWidget):
             margin=10,
         )
 
+        guideText.setObjectName("guide_text")
         topLeftLayout.addWidget(topLeftGroupBox1)
         topLeftLayout.addWidget(guideText)
         topLeftLayout.setContentsMargins(10, 10, 10, 10)
@@ -134,26 +136,29 @@ class Numbers(QWidget):
     def createBottomLayout(self):
         # Bottom box - big button
         bottomLayout = QHBoxLayout()
-        bottomLayout.addWidget(self.btn_pick)
-        bottomLayout.addWidget(self.btn_restart)
+        bottomLayout.setContentsMargins(10, 0, 10, 10)
+        bottomLayout.addWidget(self.btn_pick, 1)
+        bottomLayout.addWidget(self.btn_restart, 1)
 
         return bottomLayout
 
     def create_buttons(self):
         """Create buttons for the main window."""
-        self.btn_pick = QPushButton("Pick a Student", maximumWidth=200)
+        self.btn_pick = QPushButton("🎯 Pick a Student", maximumWidth=1000)
+        self.btn_pick.setObjectName("btn_pick")
         self.btn_pick.clicked.connect(self.btn_pick_clicked)
 
-        self.btn_restart = QPushButton("Restart", maximumWidth=100)
+        self.btn_restart = QPushButton("🔄 Restart", maximumWidth=1000)
+        self.btn_restart.setObjectName("btn_restart")
         self.btn_restart.clicked.connect(self.btn_restart_clicked)
 
-        self.btn_new_list = QPushButton("Create", maximumWidth=100)
+        self.btn_new_list = QPushButton("✨ Create", maximumWidth=100)
         self.btn_new_list.clicked.connect(self.btn_new_list_clicked)
 
-        self.btn_add_student = QPushButton("Add", maximumWidth=100)
+        self.btn_add_student = QPushButton("➕ Add", maximumWidth=100)
         self.btn_add_student.clicked.connect(self.btn_add_student_clicked)
 
-        self.btn_remove_student = QPushButton("Remove", maximumWidth=100)
+        self.btn_remove_student = QPushButton("➖ Remove", maximumWidth=100)
         self.btn_remove_student.clicked.connect(self.btn_remove_student_clicked)
 
     def btn_add_student_clicked(self):
