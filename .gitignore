@@ -129,3 +129,4 @@ dmypy.json
 .pyre/
 
 saved_lists.json
+.DS_Store
