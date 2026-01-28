@@ -31,9 +31,46 @@ from PyQt6.QtWidgets import (
     QComboBox,
     QCheckBox,
     QGraphicsOpacityEffect,
+    QStyledItemDelegate,
 )
-from PyQt6.QtGui import QFont, QPalette, QColor, QAction, QContextMenuEvent
+from PyQt6.QtGui import QFont, QPalette, QColor, QAction, QContextMenuEvent, QPainter, QBrush
 
+
+class FairnessDelegate(QStyledItemDelegate):
+    """Delegate to draw a background bar indicating pick likelihood."""
+    def __init__(self, parent_widget):
+        super().__init__(parent_widget)
+        self.parent_widget = parent_widget
+
+    def paint(self, painter, option, index):
+        if self.parent_widget.cb_fairness.isChecked():
+            student_name = index.data()
+            count = self.parent_widget.pick_counts.get(student_name, 0)
+
+            # Find the minimum count among all students to make bars relative
+            # (The least picked student should always have a full bar)
+            all_counts = [self.parent_widget.pick_counts.get(name, 0) for name in self.parent_widget.ss_name_list]
+            min_count = min(all_counts) if all_counts else 0
+
+            # Weight is relative to the minimum pick count
+            weight = (1.0 + min_count) / (1.0 + count)
+
+            painter.save()
+            painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+
+            # Draw the bar
+            bar_rect = option.rect.adjusted(2, 2, -2, -2)
+            bar_width = int(bar_rect.width() * weight)
+            bar_rect.setWidth(bar_width)
+
+            # Using a contrasting teal color with transparency
+            color = QColor(64, 156, 168, 90) # Teal contrasts nicely with rust/orange
+            painter.setBrush(QBrush(color))
+            painter.setPen(Qt.PenStyle.NoPen)
+            painter.drawRoundedRect(bar_rect, 5, 5)
+            painter.restore()
+
+        super().paint(painter, option, index)
 
 class Lists(QWidget):
     """A class to create a tab that use student numbers."""
@@ -71,6 +108,9 @@ class Lists(QWidget):
         self.opacity_effect = QGraphicsOpacityEffect()
         self.picked_student_label.setGraphicsEffect(self.opacity_effect)
 
+        # Delegate for fairness bars
+        self.fairness_delegate = FairnessDelegate(self)
+
         # Create buttons before layouts.
         self.create_buttons()
 
@@ -91,17 +131,16 @@ class Lists(QWidget):
     def createTopLeftLayout(self, def_ss, max_ss):
         topLeftLayout = QVBoxLayout()
         topLeftGroupBox1 = QGroupBox("Chosen Student")
-        topLeftGroupBox1.setMinimumHeight(180)
+        topLeftGroupBox1.setMinimumHeight(140)
         topLeftGroupBox1Layout = QVBoxLayout()
         topLeftGroupBox1.setLayout(topLeftGroupBox1Layout)
 
         # Container for the label to allow animation
         self.label_container = QWidget()
-        self.label_container.setMinimumHeight(140)
+        self.label_container.setMinimumHeight(120)
         # We don't use a layout for the container to allow absolute positioning of the label
         self.picked_student_label.setParent(self.label_container)
-        self.picked_student_label.setFixedWidth(400)
-        self.picked_student_label.move(0, 20)
+        self.picked_student_label.move(0, 0)
 
         topLeftGroupBox1Layout.addWidget(self.label_container)
 
@@ -200,6 +239,7 @@ class Lists(QWidget):
         """Create a model of names to provide strings to views."""
         self.ss_unpicked_model = QStringListModel(self.ss_name_list)
         self.ss_unpicked_list_view.setModel(self.ss_unpicked_model)  # Apply model
+        self.ss_unpicked_list_view.setItemDelegate(self.fairness_delegate) # Set delegate
         self.ss_picked_model = QStringListModel()
         self.ss_picked_list_view.setModel(self.ss_picked_model)
         self.btn_pick_enable_check()
@@ -251,8 +291,14 @@ class Lists(QWidget):
     def btn_pick_clicked(self):
         """Pick a student from the list, show result (and remove)."""
         if self.cb_fairness.isChecked():
-            # In Fairness mode, we pick from the full set and don't move between lists.
-            all_students = self.ss_name_list
+            # Filter out the last picked student so they don't appear twice in a row
+            current_picked = self.picked_student_label.text()
+            all_students = [name for name in self.ss_name_list if name != current_picked]
+
+            # If there's only one student total, we have to pick them even if they repeat
+            if not all_students:
+                all_students = self.ss_name_list
+
             if not all_students:
                 return
 
@@ -265,6 +311,8 @@ class Lists(QWidget):
             picked = random.choices(all_students, weights=weights, k=1)[0]
             self.pick_counts[picked] = self.pick_counts.get(picked, 0) + 1
             self.run_pick_animation(picked)
+            # Refresh list to update bars
+            self.ss_unpicked_list_view.viewport().update()
         else:
             rowCount = self.ss_unpicked_model.rowCount()  # Get size of list
             print(f"NumRows: {rowCount}")
@@ -286,13 +334,14 @@ class Lists(QWidget):
 
     def run_pick_animation(self, name):
         """Animate the student name sliding out to bottom and sliding in from top."""
-        # Current centered position is roughly (0, 20) in the 140px container
-        curr_x = self.picked_student_label.x()
+        # The label width is kept synced with container width in resizeEvent,
+        # so x=0 is always the 'full width' position, and text is centered via CSS.
+        curr_x = 0
 
         # 1. Slide Out (to bottom)
         self.exit_anim = QPropertyAnimation(self.picked_student_label, b"pos")
         self.exit_anim.setDuration(120)
-        self.exit_anim.setStartValue(QPoint(curr_x, 20))
+        self.exit_anim.setStartValue(QPoint(curr_x, 0))
         self.exit_anim.setEndValue(QPoint(curr_x, 100))
         self.exit_anim.setEasingCurve(QEasingCurve.Type.InQuad)
 
@@ -316,7 +365,7 @@ class Lists(QWidget):
         self.enter_anim = QPropertyAnimation(self.picked_student_label, b"pos")
         self.enter_anim.setDuration(220)
         self.enter_anim.setStartValue(QPoint(curr_x, -60))
-        self.enter_anim.setEndValue(QPoint(curr_x, 20))
+        self.enter_anim.setEndValue(QPoint(curr_x, 0))
         self.enter_anim.setEasingCurve(QEasingCurve.Type.OutBack)
 
         self.enter_opacity = QPropertyAnimation(self.opacity_effect, b"opacity")
@@ -497,6 +546,12 @@ class Lists(QWidget):
     def list_to_string(self, this_list):
         string = ", ".join(list(map(str, this_list)))
         return string
+
+    def resizeEvent(self, event):
+        """Keep the label width matched to container so text stays centered horizontally."""
+        super().resizeEvent(event)
+        if hasattr(self, 'label_container'):
+            self.picked_student_label.setFixedWidth(self.label_container.width())
 
     def showEvent(self, event):
         """Reload lists from file when the tab is shown."""

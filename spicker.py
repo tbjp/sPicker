@@ -210,6 +210,7 @@ class StudentPicker(QMainWindow):
                 font-weight: 600;
                 margin-top: 5px;
                 padding-bottom: 5px;
+                padding-left: 10px;
             }
             QCheckBox::indicator {
                 width: 18px;
