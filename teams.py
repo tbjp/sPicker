@@ -1,6 +1,6 @@
 import random
-import json
 import os
+import utils
 
 from PyQt6.QtCore import QSize, Qt, QStringListModel
 from PyQt6.QtWidgets import (
@@ -28,8 +28,7 @@ class Teams(QWidget):
 
         # Initialize variables
         self.ss_name_list = []
-        self.saved_lists_file = os.path.join(os.path.dirname(__file__), "saved_lists.json")
-        self.saved_lists = self.load_lists_from_file()
+        self.saved_lists = utils.load_lists()
 
         # Create UI components
         self.create_buttons()
@@ -37,7 +36,8 @@ class Teams(QWidget):
 
         # Results area
         self.teams_container = QWidget()
-        self.teams_layout = QVBoxLayout(self.teams_container)
+        self.teams_layout = QGridLayout(self.teams_container)
+        self.teams_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
         self.scroll_area = QScrollArea()
         self.scroll_area.setWidgetResizable(True)
         self.scroll_area.setWidget(self.teams_container)
@@ -119,15 +119,6 @@ class Teams(QWidget):
 
         return layout
 
-    def load_lists_from_file(self):
-        if os.path.exists(self.saved_lists_file):
-            try:
-                with open(self.saved_lists_file, "r") as f:
-                    return json.load(f)
-            except Exception as e:
-                print(f"Error loading lists: {e}")
-        return {}
-
     def update_list_picker(self):
         self.list_picker.blockSignals(True)
         self.list_picker.clear()
@@ -144,6 +135,7 @@ class Teams(QWidget):
         else:
             self.ss_name_list = []
             self.student_preview.setText("No students selected.")
+            self.team_count_spin.setMaximum(20) # Reset to default max
 
     def update_preview(self):
         if self.ss_name_list:
@@ -151,8 +143,16 @@ class Teams(QWidget):
             if len(text) > 100:
                 text = text[:97] + "..."
             self.student_preview.setText(f"Students ({len(self.ss_name_list)}): {text}")
+
+            # Don't allow more teams than people
+            student_count = len(self.ss_name_list)
+            if student_count > 1:
+                self.team_count_spin.setMaximum(student_count)
+            else:
+                self.team_count_spin.setMaximum(1)
         else:
             self.student_preview.setText("No students selected.")
+            self.team_count_spin.setMaximum(20)
 
     def btn_new_list_dialog_clicked(self):
         prefill_text = ", ".join(self.ss_name_list)
@@ -163,7 +163,30 @@ class Teams(QWidget):
             names = [n.strip() for n in text.split(",") if n.strip()]
             self.ss_name_list = names
             self.update_preview()
-            self.list_picker.setCurrentIndex(0)
+
+            # Save if a list is selected
+            current_name = self.list_picker.currentText()
+            if current_name in self.saved_lists:
+                self.saved_lists[current_name] = self.ss_name_list
+                utils.save_lists(self.saved_lists)
+            else:
+                # If no list selected, maybe ask for a name to save as?
+                # For now just update current session
+                pass
+
+    def showEvent(self, event):
+        """Reload lists from file when the tab is shown."""
+        super().showEvent(event)
+        current_selection = self.list_picker.currentText()
+        self.saved_lists = utils.load_lists()
+        self.update_list_picker()
+
+        # Restore selection if it still exists
+        index = self.list_picker.findText(current_selection)
+        if index >= 0:
+            self.list_picker.setCurrentIndex(index)
+            # Re-load the list to ensure it's fresh if it was edited elsewhere
+            self.load_selected_list(index)
 
     def generate_teams(self):
         if not self.ss_name_list:
@@ -193,6 +216,8 @@ class Teams(QWidget):
             names_label.setStyleSheet("font-size: 14px; color: #5c5751;")
             group_layout.addWidget(names_label)
             group.setLayout(group_layout)
-            self.teams_layout.addWidget(group)
 
-        self.teams_layout.addStretch()
+            # Add to grid in 2 columns
+            row = i // 2
+            col = i % 2
+            self.teams_layout.addWidget(group, row, col)

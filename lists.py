@@ -4,8 +4,8 @@
 # This should make it easier to manipulate the lists in the end
 
 import random
-import json
 import os
+import utils
 
 from PyQt6.QtCore import QSize, Qt, QStringListModel, QEvent
 from PyQt6.QtWidgets import (
@@ -54,8 +54,7 @@ class Lists(QWidget):
         self.last_picked_num = 0
 
         # Saved lists setup
-        self.saved_lists_file = os.path.join(os.path.dirname(__file__), "saved_lists.json")
-        self.saved_lists = self.load_lists_from_file()
+        self.saved_lists = utils.load_lists()
 
         # Create buttons before layouts.
         self.create_buttons()
@@ -374,23 +373,23 @@ class Lists(QWidget):
         string = ", ".join(list(map(str, this_list)))
         return string
 
-    def load_lists_from_file(self):
-        """Load saved lists from JSON file."""
-        if os.path.exists(self.saved_lists_file):
-            try:
-                with open(self.saved_lists_file, "r") as f:
-                    return json.load(f)
-            except Exception as e:
-                print(f"Error loading lists: {e}")
-        return {}
+    def showEvent(self, event):
+        """Reload lists from file when the tab is shown."""
+        super().showEvent(event)
+        current_selection = self.list_picker.currentText()
+        self.saved_lists = utils.load_lists()
+        self.update_list_picker()
+
+        # Restore selection if it still exists
+        index = self.list_picker.findText(current_selection)
+        if index >= 0:
+            self.list_picker.setCurrentIndex(index)
+            # Re-load the list to ensure it's fresh
+            self.load_selected_list(index)
 
     def save_lists_to_file(self):
         """Save current dictionary of lists to JSON file."""
-        try:
-            with open(self.saved_lists_file, "w") as f:
-                json.dump(self.saved_lists, f, indent=4)
-        except Exception as e:
-            print(f"Error saving lists: {e}")
+        utils.save_lists(self.saved_lists)
 
     def update_list_picker(self):
         """Populate the list picker combo box with saved list names."""
