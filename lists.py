@@ -4,6 +4,8 @@
 # This should make it easier to manipulate the lists in the end
 
 import random
+import json
+import os
 
 from PyQt6.QtCore import QSize, Qt, QStringListModel, QEvent
 from PyQt6.QtWidgets import (
@@ -23,6 +25,7 @@ from PyQt6.QtWidgets import (
     QInputDialog,
     QListView,
     QMenu,
+    QComboBox,
 )
 from PyQt6.QtGui import QFont, QPalette, QColor, QAction, QContextMenuEvent
 
@@ -48,6 +51,10 @@ class Lists(QWidget):
         self.picked_student_label.setFont(result_font)
         self.btn_pick_clicked_restart_flag = 0
         self.last_picked_num = 0
+
+        # Saved lists setup
+        self.saved_lists_file = os.path.join(os.path.dirname(__file__), "saved_lists.json")
+        self.saved_lists = self.load_lists_from_file()
 
         # Create buttons before layouts.
         self.create_buttons()
@@ -102,6 +109,14 @@ class Lists(QWidget):
         add_remove_layout.addWidget(self.btn_new_list_dialog)
         add_remove_layout.setContentsMargins(0, 10, 0, 0)
         topLeftLayout.addLayout(add_remove_layout)
+
+        # Create a layout for saved lists.
+        saved_lists_layout = QHBoxLayout()
+        saved_lists_layout.addWidget(self.list_picker)
+        saved_lists_layout.addWidget(self.btn_save_list)
+        saved_lists_layout.addWidget(self.btn_delete_list)
+        saved_lists_layout.setContentsMargins(0, 5, 0, 0)
+        topLeftLayout.addLayout(saved_lists_layout)
 
         return topLeftLayout
 
@@ -173,6 +188,16 @@ class Lists(QWidget):
         self.btn_add_student = QPushButton("Add", maximumWidth=50)
         self.btn_add_student.clicked.connect(self.btn_add_student_clicked)
 
+        self.btn_save_list = QPushButton("Save Current", maximumWidth=120)
+        self.btn_save_list.clicked.connect(self.save_list_clicked)
+
+        self.btn_delete_list = QPushButton("Delete", maximumWidth=80)
+        self.btn_delete_list.clicked.connect(self.delete_list_clicked)
+
+        self.list_picker = QComboBox()
+        self.list_picker.currentIndexChanged.connect(self.load_selected_list)
+        self.update_list_picker()
+
     def btn_add_student_clicked(self):
         """Add the student to the current list and update all lists."""
         x = self.add_remove_textbox.text().strip()
@@ -235,7 +260,7 @@ class Lists(QWidget):
     def unpicked_list_menu(self, position):
         selected = self.ss_unpicked_list_view.currentIndex()
         selected_name = self.ss_unpicked_model.data(selected)
-        
+
         cmenu = QMenu()
         pick = cmenu.addAction("Pick selected")
         remove = cmenu.addAction("Remove")
@@ -267,7 +292,7 @@ class Lists(QWidget):
     def picked_list_menu(self, position):
         selected = self.ss_picked_list_view.currentIndex()
         selected_name = self.ss_picked_model.data(selected)
-        
+
         cmenu = QMenu()
         unpick = cmenu.addAction("Unpick selected")
         remove = cmenu.addAction("Remove")
@@ -319,7 +344,7 @@ class Lists(QWidget):
         print(f"Combined: {combined}")
         combined = self.clean_list(combined)
         print(f"Combined Dups: {combined}")
-        self.ss_name_list = combined.copy()  # Update global variable.        
+        self.ss_name_list = combined.copy()  # Update global variable.
         return combined
 
     def btn_pick_enable_check(self):
@@ -342,3 +367,59 @@ class Lists(QWidget):
     def list_to_string(self, this_list):
         string = ", ".join(list(map(str, this_list)))
         return string
+
+    def load_lists_from_file(self):
+        """Load saved lists from JSON file."""
+        if os.path.exists(self.saved_lists_file):
+            try:
+                with open(self.saved_lists_file, "r") as f:
+                    return json.load(f)
+            except Exception as e:
+                print(f"Error loading lists: {e}")
+        return {}
+
+    def save_lists_to_file(self):
+        """Save current dictionary of lists to JSON file."""
+        try:
+            with open(self.saved_lists_file, "w") as f:
+                json.dump(self.saved_lists, f, indent=4)
+        except Exception as e:
+            print(f"Error saving lists: {e}")
+
+    def update_list_picker(self):
+        """Populate the list picker combo box with saved list names."""
+        self.list_picker.blockSignals(True)
+        self.list_picker.clear()
+        self.list_picker.addItem("Select a saved list...")
+        for name in sorted(self.saved_lists.keys()):
+            self.list_picker.addItem(name)
+        self.list_picker.blockSignals(False)
+
+    def save_list_clicked(self):
+        """Prompt user for a name and save current name list."""
+        name, ok = QInputDialog.getText(self, "Save List", "Enter list name:")
+        if ok and name:
+            self.update_name_list()  # Ensure ss_name_list is current
+            self.saved_lists[name] = self.ss_name_list
+            self.save_lists_to_file()
+            self.update_list_picker()
+            # Select the newly saved list
+            index = self.list_picker.findText(name)
+            if index >= 0:
+                self.list_picker.setCurrentIndex(index)
+
+    def delete_list_clicked(self):
+        """Delete the currently selected list from saved lists."""
+        name = self.list_picker.currentText()
+        if name != "Select a saved list...":
+            self.saved_lists.pop(name, None)
+            self.save_lists_to_file()
+            self.update_list_picker()
+
+    def load_selected_list(self, index):
+        """Load the selected list from the picker."""
+        name = self.list_picker.itemText(index)
+        if name in self.saved_lists:
+            self.ss_name_list = self.saved_lists[name].copy()
+            self.create_string_models()
+            self.picked_student_label.setText("--")
