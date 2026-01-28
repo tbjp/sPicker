@@ -147,11 +147,11 @@ class Names(QWidget):
 
     def create_buttons(self):
         """Create buttons for the main window."""
-        self.btn_pick = QPushButton("🎯 Pick a Student", maximumWidth=1000)
+        self.btn_pick = QPushButton("Pick a Student", maximumWidth=500)
         self.btn_pick.setObjectName("btn_pick")
         self.btn_pick.clicked.connect(self.btn_pick_clicked)
 
-        self.btn_restart = QPushButton("🔄 Restart", maximumWidth=1000)
+        self.btn_restart = QPushButton("🔄 Restart", maximumWidth=500)
         self.btn_restart.setObjectName("btn_restart")
         self.btn_restart.clicked.connect(self.btn_restart_clicked)
 
@@ -161,7 +161,7 @@ class Names(QWidget):
         self.btn_new_list_dialog = QPushButton("📝 Create New List", maximumWidth=250)
         self.btn_new_list_dialog.clicked.connect(self.btn_new_list_dialog_clicked)
 
-        self.btn_add_student = QPushButton("➕ Add", maximumWidth=60)
+        self.btn_add_student = QPushButton("➕ Add", maximumWidth=100)
         self.btn_add_student.clicked.connect(self.btn_add_student_clicked)
 
         self.btn_remove_student = QPushButton("➖ Remove", maximumWidth=100)

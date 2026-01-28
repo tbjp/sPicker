@@ -258,5 +258,5 @@ class Numbers(QWidget):
         self.btn_pick_enable_check()
 
     def list_to_string(self, this_list):
-        string = " ".join(list(map(str, this_list)))
+        string = "  ".join(list(map(str, this_list)))
         return string

@@ -176,11 +176,11 @@ class Lists(QWidget):
 
     def create_buttons(self):
         """Create buttons for the main window."""
-        self.btn_pick = QPushButton("🎯 Pick a Student", maximumWidth=1000)
+        self.btn_pick = QPushButton("Pick a Student", maximumWidth=500)
         self.btn_pick.setObjectName("btn_pick")
         self.btn_pick.clicked.connect(self.btn_pick_clicked)
 
-        self.btn_restart = QPushButton("🔄 Restart", maximumWidth=1000)
+        self.btn_restart = QPushButton("🔄 Restart", maximumWidth=500)
         self.btn_restart.setObjectName("btn_restart")
         self.btn_restart.clicked.connect(self.btn_restart_clicked)
 

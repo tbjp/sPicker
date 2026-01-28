@@ -31,35 +31,47 @@ class StudentPicker(QMainWindow):
         # Define Stylesheet
         self.setStyleSheet("""
             QMainWindow {
-                background-color: #faf7f2;
+                background-color: #e0dbcd;
             }
             QWidget {
-                background-color: #faf7f2;
                 color: #5c5751;
                 font-family: 'Segoe UI', 'Roboto', sans-serif;
                 font-size: 13px;
                 border: none;
             }
             QTabWidget {
-                background-color: #e0dbcd;
+                background: #e0dbcd;
+                border: none;
+                margin: 100px;
+                padding: 0px;
+            }
+
+            QTabWidget::tab-bar {
+                alignment: center;
             }
             QTabWidget::pane {
                 background-color: #f5f0e6;
                 border-radius: 12px;
-                margin: 5px;
+                margin: 0px 5px 5px 5px; /* Join with tab bar */
+                position: absolute;
+
             }
             QTabBar {
-                background-color: #e0dbcd;
-                border-radius: 0px;
+                background: #e0dbcd;
+                qproperty-drawBase: 0;
+                margin: 0px;
+
             }
             QTabBar::tab {
                 background-color: #d1ccbc;
                 color: #7a7469;
-                padding: 12px 24px;
+                padding: 10px 20px;
                 border-top-left-radius: 10px;
                 border-top-right-radius: 10px;
-                margin-right: 4px;
+                margin-right: 2px;
+                margin-top: 5px;
                 font-weight: bold;
+
             }
             QTabBar::tab:selected {
                 background-color: #f5f0e6;
@@ -112,6 +124,18 @@ class StudentPicker(QMainWindow):
             QLineEdit:focus, QSpinBox:focus, QComboBox:focus {
                 border: 1px solid #d97757;
             }
+            QComboBox::drop-down {
+                border: none;
+                width: 30px;
+            }
+            QComboBox::down-arrow {
+                image: none;
+                border-left: 5px solid transparent;
+                border-right: 5px solid transparent;
+                border-top: 5px solid #d97757;
+                width: 0;
+                height: 0;
+            }
             QListView {
                 background-color: #ffffff;
                 border: none;
@@ -121,7 +145,7 @@ class StudentPicker(QMainWindow):
                 show-decoration-selected: 0;
             }
             QListView::item {
-                padding: 10px;
+                padding: 6px 10px; /* Reduced vertical padding for density */
                 border-radius: 6px;
                 margin-bottom: 2px;
                 color: #5c5751;
@@ -169,10 +193,15 @@ class StudentPicker(QMainWindow):
                 font-size: 48px;
                 background-color: transparent;
                 margin: 10px;
+                qproperty-alignment: 'AlignCenter';
             }
             QLabel#guide_text {
                 color: #8c867a;
                 font-style: italic;
+            }
+            QSpinBox::up-button, QSpinBox::down-button {
+                border: none;
+                background: transparent;
             }
         """)
 
