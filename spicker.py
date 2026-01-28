@@ -204,6 +204,27 @@ class StudentPicker(QMainWindow):
                 border: none;
                 background: transparent;
             }
+            QCheckBox {
+                spacing: 8px;
+                color: #5c5751;
+                font-weight: 600;
+                margin-top: 5px;
+                padding-bottom: 5px;
+            }
+            QCheckBox::indicator {
+                width: 18px;
+                height: 18px;
+                border-radius: 5px;
+                border: 2px solid #d1ccbc;
+                background-color: #ffffff;
+            }
+            QCheckBox::indicator:hover {
+                border: 2px solid #d97757;
+            }
+            QCheckBox::indicator:checked {
+                background-color: #d97757;
+                border: 2px solid #d97757;
+            }
         """)
 
         QApplication.setStyle(QStyleFactory.create("Fusion"))

@@ -7,7 +7,10 @@ import random
 import os
 import utils
 
-from PyQt6.QtCore import QSize, Qt, QStringListModel, QEvent
+from PyQt6.QtCore import (
+    QSize, Qt, QStringListModel, QEvent, QPropertyAnimation,
+    QEasingCurve, QSequentialAnimationGroup, QPoint, QParallelAnimationGroup
+)
 from PyQt6.QtWidgets import (
     QWidget,
     QToolTip,
@@ -26,6 +29,8 @@ from PyQt6.QtWidgets import (
     QListView,
     QMenu,
     QComboBox,
+    QCheckBox,
+    QGraphicsOpacityEffect,
 )
 from PyQt6.QtGui import QFont, QPalette, QColor, QAction, QContextMenuEvent
 
@@ -56,6 +61,16 @@ class Lists(QWidget):
         # Saved lists setup
         self.saved_lists = utils.load_lists()
 
+        # Fairness settings
+        self.pick_counts = {}
+        self.cb_fairness = QCheckBox("Fairness Mode")
+        self.cb_fairness.setToolTip("Students picked in previous rounds are less likely to be picked again.")
+        self.cb_fairness.stateChanged.connect(self.on_fairness_toggled)
+
+        # Animation setup
+        self.opacity_effect = QGraphicsOpacityEffect()
+        self.picked_student_label.setGraphicsEffect(self.opacity_effect)
+
         # Create buttons before layouts.
         self.create_buttons()
 
@@ -76,9 +91,19 @@ class Lists(QWidget):
     def createTopLeftLayout(self, def_ss, max_ss):
         topLeftLayout = QVBoxLayout()
         topLeftGroupBox1 = QGroupBox("Chosen Student")
+        topLeftGroupBox1.setMinimumHeight(180)
         topLeftGroupBox1Layout = QVBoxLayout()
         topLeftGroupBox1.setLayout(topLeftGroupBox1Layout)
-        topLeftGroupBox1Layout.addWidget(self.picked_student_label)
+
+        # Container for the label to allow animation
+        self.label_container = QWidget()
+        self.label_container.setMinimumHeight(140)
+        # We don't use a layout for the container to allow absolute positioning of the label
+        self.picked_student_label.setParent(self.label_container)
+        self.picked_student_label.setFixedWidth(400)
+        self.picked_student_label.move(0, 20)
+
+        topLeftGroupBox1Layout.addWidget(self.label_container)
 
         guideText = QLabel(
             "Click create to replace the list. You can add or remove specific "
@@ -88,7 +113,7 @@ class Lists(QWidget):
         )
         guideText.setObjectName("guide_text")
 
-        topLeftLayout.addWidget(topLeftGroupBox1)
+        # topLeftLayout.addWidget(topLeftGroupBox1) # Move this down
         topLeftLayout.setContentsMargins(10, 10, 10, 10)
 
         # Create a textbox for a new list.
@@ -102,6 +127,9 @@ class Lists(QWidget):
 
         # Create student lists.
         topRightLayout = self.createTopRightLayout()
+
+        # Add widgets in order
+        topLeftLayout.addWidget(topLeftGroupBox1)
         topLeftLayout.addLayout(topRightLayout)
 
         # Create a layout for add/remove ss.
@@ -120,6 +148,9 @@ class Lists(QWidget):
         saved_lists_layout.setContentsMargins(0, 5, 0, 0)
         topLeftLayout.addLayout(saved_lists_layout)
 
+        # Fairness checkbox
+        topLeftLayout.addWidget(self.cb_fairness)
+
         return topLeftLayout
 
     def createTopRightLayout(self):  # Student lists. (Was top right.)
@@ -127,7 +158,7 @@ class Lists(QWidget):
         topRightLayout = QHBoxLayout()
 
         # --- Unpicked students group box
-        topRightGroupBox1 = QGroupBox("Unpicked Students")
+        self.unpicked_group_box = QGroupBox("Unpicked Students")
         topRightGroupBox1Layout = QVBoxLayout()
         self.ss_unpicked_list_view = QListView()
         self.ss_unpicked_list_view.customContextMenuRequested.connect(self.unpicked_list_menu)
@@ -137,12 +168,12 @@ class Lists(QWidget):
 
         self.btn_new_list_clicked()  # To init sample list
 
-        topRightGroupBox1.setLayout(topRightGroupBox1Layout)
+        self.unpicked_group_box.setLayout(topRightGroupBox1Layout)
         topRightGroupBox1Layout.addWidget(self.ss_unpicked_list_view)
-        topRightLayout.addWidget(topRightGroupBox1)
+        topRightLayout.addWidget(self.unpicked_group_box)
 
         # --- Picked students group box
-        topRightGroupBox2 = QGroupBox("Picked Students")
+        self.picked_group_box = QGroupBox("Picked Students")
         topRightGroupBox2Layout = QVBoxLayout()
         self.ss_picked_list_view = QListView()
         self.ss_picked_list_view.customContextMenuRequested.connect(self.picked_list_menu)
@@ -151,8 +182,8 @@ class Lists(QWidget):
         )  # Set right click menu to use custom
         self.create_string_models()  # Has to be after creating sample list
         topRightGroupBox2Layout.addWidget(self.ss_picked_list_view)
-        topRightGroupBox2.setLayout(topRightGroupBox2Layout)
-        topRightLayout.addWidget(topRightGroupBox2)
+        self.picked_group_box.setLayout(topRightGroupBox2Layout)
+        topRightLayout.addWidget(self.picked_group_box)
 
         return topRightLayout
 
@@ -219,18 +250,88 @@ class Lists(QWidget):
 
     def btn_pick_clicked(self):
         """Pick a student from the list, show result (and remove)."""
-        rowCount = self.ss_unpicked_model.rowCount()  # Get size of list
-        print(f"NumRows: {rowCount}")
-        randomValue = random.randrange(0, rowCount)  # Pick random
-        print(f"Selected: {randomValue}")
-        index = self.ss_unpicked_model.index(randomValue)  # Get index of picked
-        picked = self.ss_unpicked_model.data(index)  # Get picked string
-        print(f"Index data:{picked}")
-        self.ss_unpicked_model.removeRows(randomValue, 1)  # Remove picked
-        self.model_insert_name(self.ss_picked_model, picked)
-        self.last_picked_num = randomValue
-        self.picked_student_label.setText(picked)
-        self.btn_pick_enable_check()
+        if self.cb_fairness.isChecked():
+            # In Fairness mode, we pick from the full set and don't move between lists.
+            all_students = self.ss_name_list
+            if not all_students:
+                return
+
+            weights = []
+            for student in all_students:
+                count = self.pick_counts.get(student, 0)
+                weight = 1.0 / (1.0 + count)
+                weights.append(weight)
+
+            picked = random.choices(all_students, weights=weights, k=1)[0]
+            self.pick_counts[picked] = self.pick_counts.get(picked, 0) + 1
+            self.run_pick_animation(picked)
+        else:
+            rowCount = self.ss_unpicked_model.rowCount()  # Get size of list
+            print(f"NumRows: {rowCount}")
+
+            if rowCount <= 0:
+                return
+
+            randomValue = random.randrange(0, rowCount)  # Pick random
+            index = self.ss_unpicked_model.index(randomValue)  # Get index of picked
+            picked = self.ss_unpicked_model.data(index)  # Get picked string
+
+            print(f"Selected: {randomValue}")
+            print(f"Index data:{picked}")
+            self.ss_unpicked_model.removeRows(randomValue, 1)  # Remove picked
+            self.model_insert_name(self.ss_picked_model, picked)
+            self.last_picked_num = randomValue
+            self.run_pick_animation(picked)
+            self.btn_pick_enable_check()
+
+    def run_pick_animation(self, name):
+        """Animate the student name sliding out to bottom and sliding in from top."""
+        # Current centered position is roughly (0, 20) in the 140px container
+        curr_x = self.picked_student_label.x()
+
+        # 1. Slide Out (to bottom)
+        self.exit_anim = QPropertyAnimation(self.picked_student_label, b"pos")
+        self.exit_anim.setDuration(120)
+        self.exit_anim.setStartValue(QPoint(curr_x, 20))
+        self.exit_anim.setEndValue(QPoint(curr_x, 100))
+        self.exit_anim.setEasingCurve(QEasingCurve.Type.InQuad)
+
+        self.exit_opacity = QPropertyAnimation(self.opacity_effect, b"opacity")
+        self.exit_opacity.setDuration(120)
+        self.exit_opacity.setStartValue(1.0)
+        self.exit_opacity.setEndValue(0.0)
+
+        self.exit_group = QParallelAnimationGroup()
+        self.exit_group.addAnimation(self.exit_anim)
+        self.exit_group.addAnimation(self.exit_opacity)
+
+        # 2. Update Text and Reset Position (during the transition)
+        def update_text():
+            self.picked_student_label.setText(name)
+            self.picked_student_label.move(curr_x, -60)
+
+        self.exit_group.finished.connect(update_text)
+
+        # 3. Slide In (from top)
+        self.enter_anim = QPropertyAnimation(self.picked_student_label, b"pos")
+        self.enter_anim.setDuration(220)
+        self.enter_anim.setStartValue(QPoint(curr_x, -60))
+        self.enter_anim.setEndValue(QPoint(curr_x, 20))
+        self.enter_anim.setEasingCurve(QEasingCurve.Type.OutBack)
+
+        self.enter_opacity = QPropertyAnimation(self.opacity_effect, b"opacity")
+        self.enter_opacity.setDuration(180)
+        self.enter_opacity.setStartValue(0.0)
+        self.enter_opacity.setEndValue(1.0)
+
+        self.enter_group = QParallelAnimationGroup()
+        self.enter_group.addAnimation(self.enter_anim)
+        self.enter_group.addAnimation(self.enter_opacity)
+
+        self.seq_group = QSequentialAnimationGroup()
+        self.seq_group.addAnimation(self.exit_group)
+        self.seq_group.addAnimation(self.enter_group)
+        self.seq_group.start()
 
     def btn_new_list_clicked(self):  # Perhaps redundant but still used on startup
         """Create a new list based on the text box. Reset results."""
@@ -260,7 +361,29 @@ class Lists(QWidget):
             x.sort()
             self.ss_name_list = x.copy()
             self.create_string_models()
+            self.reset_fairness_counts()
             self.picked_student_label.setText("--")
+
+    def on_fairness_toggled(self, state):
+        """Update UI and reset logic when fairness mode is toggled."""
+        self.reset_fairness_counts()
+        is_checked = self.cb_fairness.isChecked()
+
+        if is_checked:
+            self.unpicked_group_box.setTitle("Students")
+            self.picked_group_box.hide()
+            # Reset lists to full
+            self.btn_restart_clicked()
+        else:
+            self.unpicked_group_box.setTitle("Unpicked Students")
+            self.picked_group_box.show()
+
+        self.btn_pick_enable_check()
+
+    def reset_fairness_counts(self):
+        """Reset the counts for fairness mode."""
+        self.pick_counts = {}
+        print("Fairness counts reset.")
 
     def unpicked_list_menu(self, position):
         selected = self.ss_unpicked_list_view.currentIndex()
@@ -359,13 +482,15 @@ class Lists(QWidget):
         print(unpicked_rows)
         print(picked_rows)
 
-        if self.ss_unpicked_model.rowCount() >= 1:
+        if self.ss_unpicked_model.rowCount() >= 1 or self.cb_fairness.isChecked():
             self.btn_pick.setEnabled(1)
         else:
             self.btn_pick.setDisabled(1)
 
-        if self.ss_picked_model.rowCount() >= 1:
+        if self.ss_picked_model.rowCount() >= 1 and not self.cb_fairness.isChecked():
             self.btn_restart.setEnabled(1)
+        elif self.cb_fairness.isChecked():
+            self.btn_restart.setEnabled(0) # Restart doesn't make sense if everyone is always there
         else:
             self.btn_restart.setDisabled(1)
 
@@ -427,4 +552,5 @@ class Lists(QWidget):
         if name in self.saved_lists:
             self.ss_name_list = self.saved_lists[name].copy()
             self.create_string_models()
+            self.reset_fairness_counts()
             self.picked_student_label.setText("--")

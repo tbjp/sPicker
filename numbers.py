@@ -14,6 +14,7 @@ from PyQt6.QtWidgets import (
     QGroupBox,
     QTabWidget,
     QStyleFactory,
+    QCheckBox,
 )
 from PyQt6.QtGui import QFont, QPalette, QColor
 
@@ -41,6 +42,12 @@ class Numbers(QWidget):
         self.picked_student_label.setFont(result_font)
         self.btn_pick_clicked_restart_flag = 0
         self.last_picked_num = 0
+
+        # Fairness settings
+        self.pick_counts = {}
+        self.cb_fairness = QCheckBox("Fairness Mode")
+        self.cb_fairness.setToolTip("Students picked in previous rounds are less likely to be picked again.")
+        self.cb_fairness.stateChanged.connect(self.on_fairness_toggled)
 
         # Create buttons before layouts.
         self.create_buttons()
@@ -105,6 +112,9 @@ class Numbers(QWidget):
         add_remove_layout.setContentsMargins(10, 10, 10, 10)
         topLeftLayout.addLayout(add_remove_layout)
 
+        # Fairness checkbox
+        topLeftLayout.addWidget(self.cb_fairness)
+
         return topLeftLayout
 
     def createTopRightLayout(self):
@@ -112,21 +122,21 @@ class Numbers(QWidget):
         topRightLayout = QVBoxLayout()
 
         # --- Unpicked students group box
-        topRightGroupBox1 = QGroupBox("Unpicked Students")
+        self.unpicked_group_box = QGroupBox("Unpicked Students")
         topRightGroupBox1Layout = QVBoxLayout()
         self.ss_picked_list_label = QLabel("No results.", wordWrap=1000)
         self.btn_new_list_clicked()
-        topRightGroupBox1.setLayout(topRightGroupBox1Layout)
+        self.unpicked_group_box.setLayout(topRightGroupBox1Layout)
         topRightGroupBox1Layout.addWidget(self.ss_unpicked_list_label)
-        topRightLayout.addWidget(topRightGroupBox1)
+        topRightLayout.addWidget(self.unpicked_group_box)
 
         # --- Picked students group box
-        topRightGroupBox2 = QGroupBox("Picked Students")
+        self.picked_group_box = QGroupBox("Picked Students")
         topRightGroupBox2Layout = QVBoxLayout()
         topRightGroupBox2Layout.addWidget(self.ss_picked_list_label)
-        topRightGroupBox2.setLayout(topRightGroupBox2Layout)
+        self.picked_group_box.setLayout(topRightGroupBox2Layout)
         topRightGroupBox2Layout.addWidget(self.ss_picked_list_label)
-        topRightLayout.addWidget(topRightGroupBox2)
+        topRightLayout.addWidget(self.picked_group_box)
 
         self.ss_unpicked_list_label.setMaximumWidth(200)
         self.ss_picked_list_label.setMaximumWidth(200)
@@ -189,21 +199,38 @@ class Numbers(QWidget):
 
         rf = self.btn_pick_clicked_restart_flag
 
-        if x:
-            rf = 0  # Still students in list
-            randomValue = random.choice(x)
-            print(randomValue)
-            self.ss_unpicked_list.remove(randomValue)
-            self.ss_picked_list.append(randomValue)
-            self.update_labels(randomValue)
+        if x or self.cb_fairness.isChecked():
+            rf = 0  # Still students in list or in fairness mode
+
+            if self.cb_fairness.isChecked():
+                # Weighted selection from the FULL list
+                full_list = self.ss_num_list
+                weights = []
+                for student in full_list:
+                    count = self.pick_counts.get(student, 0)
+                    weight = 1.0 / (1.0 + count)
+                    weights.append(weight)
+
+                randomValue = random.choices(full_list, weights=weights, k=1)[0]
+                # Increment count
+                self.pick_counts[randomValue] = self.pick_counts.get(randomValue, 0) + 1
+                # In fairness mode, we don't move students.
+                self.update_labels(randomValue)
+            else:
+                randomValue = random.choice(x)
+                print(randomValue)
+                self.ss_unpicked_list.remove(randomValue)
+                self.ss_picked_list.append(randomValue)
+                self.update_labels(randomValue)
+
             self.last_picked_num = randomValue
             print(f"RF: {rf}")
 
-        if not x and rf == 0:
+        if not x and rf == 0 and not self.cb_fairness.isChecked():
             rf = 1
             print(f"RF: {rf}")
 
-        if rf == 1:  # No students in list.
+        if rf == 1 and not self.cb_fairness.isChecked():  # No students in list.
             self.ss_unpicked_list_label.setText("All students picked.")
             self.btn_pick.setDisabled(1)
 
@@ -215,7 +242,29 @@ class Numbers(QWidget):
         self.ss_num_list = list(range(1, x + 1))
         self.ss_unpicked_list = self.ss_num_list.copy()
         self.ss_picked_list = []
+        self.reset_fairness_counts()
         self.update_labels(0)
+
+    def on_fairness_toggled(self, state):
+        """Update UI and reset logic when fairness mode is toggled."""
+        self.reset_fairness_counts()
+        is_checked = self.cb_fairness.isChecked()
+
+        if is_checked:
+            self.unpicked_group_box.setTitle("Students")
+            self.picked_group_box.hide()
+            # Reset lists to full
+            self.btn_restart_clicked()
+        else:
+            self.unpicked_group_box.setTitle("Unpicked Students")
+            self.picked_group_box.show()
+
+        self.update_labels(0)
+
+    def reset_fairness_counts(self):
+        """Reset the counts for fairness mode."""
+        self.pick_counts = {}
+        print("Fairness counts reset.")
 
     def btn_restart_clicked(self):
         """Restart the lists based on current list."""
@@ -226,12 +275,12 @@ class Numbers(QWidget):
 
     def btn_pick_enable_check(self):
         """Check if the pick button should be enabled or disabled."""
-        if self.ss_unpicked_list:
+        if self.ss_unpicked_list or self.cb_fairness.isChecked():
             self.btn_pick.setEnabled(1)
         else:
             self.btn_pick.setDisabled(1)
 
-        if self.ss_picked_list:
+        if self.ss_picked_list and not self.cb_fairness.isChecked():
             self.btn_restart.setEnabled(1)
         else:
             self.btn_restart.setDisabled(1)
