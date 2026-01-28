@@ -18,6 +18,7 @@ from PyQt6.QtGui import QFont, QPalette, QColor
 from numbers import Numbers
 from names import Names
 from lists import Lists
+from teams import Teams
 
 
 class StudentPicker(QMainWindow):
@@ -215,11 +216,13 @@ class StudentPicker(QMainWindow):
         # Create tabs for the main window.
         tab_widget = QTabWidget()
         page_3 = Numbers(self)
+        page_4 = Teams(self)
         page_2 = Names(self)
         page_1 = Lists(self)
         tab_widget.addTab(page_1, "Lists")
         tab_widget.addTab(page_2, "Names")
         tab_widget.addTab(page_3, "Numbers")
+        tab_widget.addTab(page_4, "Teams")
 
         # Set the central widget of the window.
         self.setCentralWidget(tab_widget)
