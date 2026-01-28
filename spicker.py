@@ -40,14 +40,21 @@ class StudentPicker(QMainWindow):
                 font-size: 13px;
                 border: none;
             }
+            QTabWidget {
+                background-color: #e0dbcd;
+            }
             QTabWidget::pane {
                 background-color: #f5f0e6;
                 border-radius: 12px;
                 margin: 5px;
             }
+            QTabBar {
+                background-color: #e0dbcd;
+                border-radius: 0px;
+            }
             QTabBar::tab {
-                background-color: #edeadf;
-                color: #8c867a;
+                background-color: #d1ccbc;
+                color: #7a7469;
                 padding: 12px 24px;
                 border-top-left-radius: 10px;
                 border-top-right-radius: 10px;
@@ -110,16 +117,51 @@ class StudentPicker(QMainWindow):
                 border: none;
                 border-radius: 8px;
                 padding: 5px;
+                outline: 0;
+                show-decoration-selected: 0;
             }
             QListView::item {
-                padding: 8px;
-                border-radius: 4px;
+                padding: 10px;
+                border-radius: 6px;
                 margin-bottom: 2px;
+                color: #5c5751;
             }
             QListView::item:selected {
                 background-color: #f5f0e6;
                 color: #d97757;
                 font-weight: bold;
+                border: none;
+                outline: 0;
+            }
+            QListView::item:selected:focus {
+                background-color: #f5f0e6;
+                color: #d97757;
+                border: none;
+                outline: 0;
+            }
+            QListView::item:selected:active {
+                background-color: #f5f0e6;
+                color: #d97757;
+                border: none;
+                outline: 0;
+            }
+            QScrollBar:vertical {
+                border: none;
+                background: #edeadf;
+                width: 10px;
+                margin: 0px;
+                border-radius: 5px;
+            }
+            QScrollBar::handle:vertical {
+                background: #d97757;
+                border-radius: 5px;
+                min-height: 20px;
+            }
+            QScrollBar::handle:vertical:hover {
+                background: #c46243;
+            }
+            QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
+                height: 0px;
             }
             QLabel#picked_student_label {
                 color: #d97757;

@@ -175,6 +175,7 @@ class Names(QWidget):
             self.ss_unpicked_list.append(x)
         self.ss_unpicked_list.sort()
         self.update_labels(self.last_picked_num)
+        self.add_remove_textbox.clear()
 
     def btn_remove_student_clicked(self):
         """Remove the student to the current list and update all lists."""

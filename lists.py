@@ -190,7 +190,7 @@ class Lists(QWidget):
         self.btn_new_list_dialog = QPushButton("📝 Create New List", maximumWidth=250)
         self.btn_new_list_dialog.clicked.connect(self.btn_new_list_dialog_clicked)
 
-        self.btn_add_student = QPushButton("➕ Add", maximumWidth=60)
+        self.btn_add_student = QPushButton("➕ Add", maximumWidth=80)
         self.btn_add_student.clicked.connect(self.btn_add_student_clicked)
 
         self.btn_save_list = QPushButton("💾 Save Current", maximumWidth=130)
@@ -210,6 +210,7 @@ class Lists(QWidget):
             self.ss_name_list.append(x)
             self.model_insert_name(self.ss_unpicked_model, x)
             self.ss_unpicked_model.sort(0)  # 0 = column
+        self.add_remove_textbox.clear()
 
     def model_insert_name(self, model, name):
         """Insert a name at the top of the passed model."""
